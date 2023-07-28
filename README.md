@@ -51,26 +51,46 @@ To try out the example, create myfolder with your files and subfolders, and run:
 ```
 python freezeFS.py myfolder myfolder.py
 Writing Python file myfolder.py.
-Appended file myfolder\file1.txt->/file1.txt, 100 bytes
-Appended folder myfolder\mysubfolder->/mysubfolder
-Appended file myfolder\mysubfolder\file20.txt->/mysubfolder/file20.txt, 10 bytes
-Appended file myfolder\mysubfolder\file30.txt->/mysubfolder/file30.txt, 20 bytes
-Sum of file sizes 130 bytes, 3 files 1 folders
+Writing Python file myfolder.py.
+Appended folder myfolder\css->/css
+Appended file myfolder\css\mystyles.css->/css/mystyles.css, 14050 bytes
+Appended file myfolder\css\normalize.css->/css/normalize.css, 7870 bytes
+Appended file myfolder\favicon.ico->/favicon.ico, 1150 bytes
+Appended folder myfolder\images->/images
+Appended file myfolder\images\myimage.jpg->/images/myimage.jpg, 17337 bytes
+Appended file myfolder\index.html->/index.html, 7475 bytes
+Appended file myfolder\tunes.html->/tunes.html, 5671 bytes
+Sum of file sizes 53553 bytes, 6 files 2 folders
 myfolder.py written successfully.
 On import the file system will be mounted at /myfolder.
 % mpremote cp vfsfrozen.py :
 % mpremote cp myfolder.py :
 % mpremote
->>>import myfolder.py
+>>>import myfolder
 vfsfrozen mount: mounted filesystem at /myfolder
 >>> os.listdir("/myfolder")
 ['file1.txt', 'mysubfolder']
 >>> os.listdir("/myfolder/mysubfolder")
-['file20.txt', 'file30.txt']
->>> x=open("/myfolder/mysubfolder/file20.txt")
->>> x.read()
-'Hello 1234'
+['css', 'favicon.ico', 'images', 'index.html', 'tunes.html']
+>>> x=open("/myfolder/index.html")
+>>> x.readline()
+'<!DOCTYPE html>\r\n'
+>>> x.readline()
+'\r\n'
+>>> x.readline()
+'<head>\r\n'
+>>> x.readline()
+'\t<meta http-equiv="Content-Type" content="text/html; charset=utf-8">\r\n'
 >>> x.close()
+>>> os.stat("/myfolder/index.html")
+(32768, 0, 0, 0, 0, 0, 7475, 0, 0, 0)
+os.stat("/myfolder/images")
+(16384, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+>>> os.listdir("/myfolder/images")
+>>> z=open("/myfolder/images/myimage.jpg", "rb")
+>>> z.read(10)
+b'\xff\xd8\xff\xe0\x00\x10JFIF'
+>>> z.close()
 ```
 
 In this test case, the file system gets created in RAM instead of flash, so all files are now loaded to RAM. When freezing myfolder.py with the MicroPython image, the file data resides in flash and uses no RAM. Other than that, you can test the functionality.
