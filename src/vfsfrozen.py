@@ -31,12 +31,18 @@ _DIRENTRY_UTF8_WIDTH = 1
 # UTF-8 sequences to Micropython strings.
 # For file.read() without size, file.readline(), file.readlines() no buffer is allocated.
 # If the buffer is small, file.read(size) needs to concatenate many small strings
-# to get the result. If the buffer is too large, memory is wasted. 
-_decode_buffer_size = 400
+# to get the result. If the buffer is too large, memory is wasted.  A good
+# size is the size of file.read(size) times four. A _decode_buffer_size > 400 bytes
+# does not improve much.
+# A setting of zero adjusts buffer based on the file.read(size) parameter, but
+# the buffer is allocated once only.
+_decode_buffer_size = 100
+
+
 def set_decode_buffer_size( n ):
     global _decode_buffer_size
-    if n < 16:
-        return
+    if 1 < n < 4:
+        n = 4 # Will fail if < 4
     _decode_buffer_size = n
 
 def get_basename( filename ):
@@ -207,7 +213,10 @@ class StringIO_bytes():
         # max_chars is the maximum unicode characters that can 
         # fit into self.buffer.
         if self.buffer is None:
-            self.buffer = bytearray( _decode_buffer_size ) 
+            if _decode_buffer_size:
+                self.buffer = bytearray( _decode_buffer_size ) 
+            else:
+                self.buffer = bytearray( min( size * 4, 400 ) )
         max_chars = len(self.buffer) // self.utf8_width
 
         result = ""    
@@ -359,3 +368,4 @@ def deploy_fs( direntries, target, silent ):
                 _verbose_print( silent, "deploy",  f"Could not create folder {dest}, {e}" )
                 raise
             _verbose_print( silent, "deploy",  f"Folder {dest} created" )
+
