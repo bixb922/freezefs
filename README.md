@@ -3,8 +3,6 @@
 
 FreezeFS is a utility that freezes file structures into a MicroPython image. It converts folders into Python source files and mounts them as read-only Virtual File Systems on microcontrollers. This allows  standard access to the files with low RAM usage. It also offers the option to copy files for initial deployment. Overall, it simplifies deploying text and binary files with a MicroPython image.
 
-This software is in beta testing stage.
-
 ## Description
 freezeFS.py  is a utility program that runs on a PC and converts an arbitrary folder, subfolder and file structure into a Python source file. The generated Python file can then be frozen as bytecode into a MicroPython image together with the Virtual File System driver vfsfrozen.py.
 
@@ -45,7 +43,7 @@ To make the file structure depicted visible on the microcontroller, you will hav
 ```
 import myfolder
 ```
-The next step is to include myfolder.py the manifest.py used for freezing the MicroPython image, as well as FreezeFS.py, which is the file system manager of this utility.
+The next step is to include myfolder.py the manifest.py used for freezing the MicroPython image, as well as vfsfrozen.py, which is the file system manager of this utility.
 
 When booting up the microcontroller, and once ```import myfolder``` has been executed, the above file structure is mounted (using os.mount() internally) at /myfolder, and the files and folders will appear under /myfolder on the microcontroller as read only files. The files are not copied to /myfolder, but remain in the MicroPython image on flash.
 
@@ -186,7 +184,7 @@ The generated .py module exposes the following functions: mount(), umount(), dep
 
 ## The VFS module (vfsfrozen.py)
 
-This is the module that implements the Virtual File System. You have to install it on your microcontroller by copying the FreezeFS.py file to your root folder or the /lib folder, or better freeze via manifest.py to the MicroPython image.
+This is the module that implements the Virtual File System. You have to install it on your microcontroller by copying the vfsfrozen.py file to your root folder or the /lib folder, or better freeze via manifest.py to the MicroPython image.
 
 This module implements mount, umount, chdir, getcwd, ilistdir, listdir, stat, open, close, read, readinto, readline, readlines, the iterator for reading lines and the decoding of UTF-8 text files to MicroPython strings.
 
@@ -228,7 +226,6 @@ Python 3.10 or later must be installed on the PC.
 
 The code is Python only. No C/C++ code. There are no processor or board specific dependencies.
 
-
 ## Compatibility
 Tested with MicroPython 1.20 and Python 3.10.7 and 3.11.4.
 
@@ -254,6 +251,9 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+
 
 
 
