@@ -96,16 +96,12 @@ def files_to_python( files, pc_outfile, target, on_import ):
         file.write(f"DATE_FROZEN = const('{t[0]}/{t[1]:02d}/{t[2]:02d} {t[3]:02d}:{t[4]:02d}:{t[5]:02d}')\n")
         file.write(f"last_mount_point = None\n" )
         
-        target_param = "__name__"
-        if target:
-            target_param = f"'{target}'"
-            
-        file.write(f"def mount( mount_point={target_param} ):\n" )
+        file.write(f"def mount( mount_point='{target}' ):\n" )
         nf = number_of_files+number_of_folders
         file.write( "    from vfsfrozen import mount_fs\n" )
         file.write( "    global last_mount_point\n" )
         file.write(f"    last_mount_point = mount_fs( _direntries, mount_point, {sum_size}, {nf}, {silent})\n" )
-        file.write(f"def deploy( target={target_param}):\n" )
+        file.write(f"def deploy( target='{target}'):\n" )
         file.write( "    from vfsfrozen import deploy_fs\n" )
         file.write(f"    deploy_fs( _direntries, target, {silent} )\n" )
         file.write( "def umount():\n" )
@@ -174,6 +170,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     pc_infolder = Path( args.infolder )
     pc_outfile = Path( args.outfile )
+    module_name = pc_outfile.name[0:-len(pc_outfile.suffix)]
     target = args.target
     on_import = args.on_import 
     silent = args.silent
@@ -189,6 +186,8 @@ if __name__ == "__main__":
             target = "/" + target
         if target.endswith("/") and target != "/":
             target = target[0:-1]
+    else:
+        target = "/" + module_name
 
     print(f'Writing Python file {pc_outfile}.')
     
@@ -197,17 +196,12 @@ if __name__ == "__main__":
 
     print(pc_outfile, 'written successfully.')
     if on_import == "mount":
-        if target: 
-            t = target
-        else:
-            t = "/<module_name>"
-        print(f"On import the file system will be mounted at {t}." )
+        print(f"On import the file system will be mounted at {target}." )
+   
     elif on_import == "deploy":
-        if target: 
-            t = target
-        else:
-            t = "/<module_name>"
-        print(f"On import the file system will be copied once to {t}." )
+        print(f"On import the file system will be deployed (copied if empty) to {target}." )
     
+  
+
   
 
