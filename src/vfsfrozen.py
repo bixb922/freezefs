@@ -1,4 +1,4 @@
-# (c) Hermann Paul von Borries
+# (c) 2023 Hermann Paul von Borries
 # MIT License
 
 import os
