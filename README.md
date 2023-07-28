@@ -72,7 +72,6 @@ vfsfrozen mount: mounted filesystem at /myfolder
 'Hello 1234'
 >>> x.close()
 ```
-os.listdir should now show the frozen files and folders. open("/myfolder/myfile.data") will open that file. 
 
 In this test case, the file system gets created in RAM instead of flash, so all files are now loaded to RAM. When freezing myfolder.py with the MicroPython image, the file data resides in flash and uses no RAM. Other than that, you can test the functionality.
 
