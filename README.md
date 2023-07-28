@@ -1,7 +1,7 @@
 # FreezeFS: Freeze file structures into MicroPython images to mount or deploy files 
 ## Purpose
 
-FreezeFS is a utility that freezes file structures into a MicroPython image. It converts folders into Python source files and mounts them as read-only Virtual File Systems on microcontrollers. This allows  standard access to the files with low RAM usage. It also offers the option to copy files for initial deployment. Overall, it simplifies deploying text and binary files with a MicroPython image.
+freezeFS is a utility that freezes file structures into a MicroPython image. It converts folders into Python source files and mounts them as read-only Virtual File Systems on microcontrollers. This allows  standard access to the files with low RAM usage. It also offers the option to copy files for initial deployment. Overall, it simplifies deploying text and binary files with a MicroPython image.
 
 ## Description
 freezeFS.py  is a utility program that runs on a PC and converts an arbitrary folder, subfolder and file structure into a Python source file. The generated Python file can then be frozen as bytecode into a MicroPython image together with the Virtual File System driver vfsfrozen.py.
@@ -153,22 +153,22 @@ The output file of the freezeFS.py  utility is a module with the frozen file sys
 Sample output when importing a generated output .py module, with --on_import=mount
 ```
 >>> import frozenfiles
-FreezeFS mount: mounted filesystem at /fz.
+vfsfrozen mount: mounted filesystem at /fz.
 >>>import frozenfiles
 >>> frozenfiles.deploy()
-FreezeFS deploy: folder found at /fz, no files copied.
+vfsfrozen deploy: folder found at /fz, no files copied.
 >>> frozenfiles.umount()
-FreezeFS umount: /fz unmounted.
+vfsfrozen umount: /fz unmounted.
 >>> frozenfiles.deploy()
-FreezeFS deploy: folder /fz created.
-FreezeFS deploy: file /fz/file1.txt copied.
-FreezeFS deploy: file /fz/file2.txt copied.
-FreezeFS deploy: file /fz/file3.bin copied.
-FreezeFS deploy: Folder /fz/sub1 created
-FreezeFS deploy: file /fz/sub1/file1.txt copied.
-FreezeFS deploy: file /fz/sub1/file2.txt copied.
-FreezeFS deploy: Folder /fz/sub1/sub2 created
-FreezeFS deploy: file /fz/sub1/sub2/file2.txt copied.
+vfsfrozen deploy: folder /fz created.
+vfsfrozen deploy: file /fz/file1.txt copied.
+vfsfrozen deploy: file /fz/file2.txt copied.
+vfsfrozen deploy: file /fz/file3.bin copied.
+vfsfrozen deploy: Folder /fz/sub1 created
+vfsfrozen deploy: file /fz/sub1/file1.txt copied.
+vfsfrozen deploy: file /fz/sub1/file2.txt copied.
+vfsfrozen deploy: Folder /fz/sub1/sub2 created
+vfsfrozen deploy: file /fz/sub1/sub2/file2.txt copied.
 ```
 Note that the second ```import frozenfiles``` does not attempt to mount again. This is a result of how Python works: initialization code is called for the first import after boot only.
 
@@ -213,7 +213,7 @@ mpremote cp vfsfrozen.py :
 mpremote cp frozenfiles.py : 
 mpremote run test.py
 ```
-test.py will create and populate the testfiles folder on the PC. The files are frozen into frozenfiles.py. The tests compare behaviour of file operations of the FreezeFS file system and the standard file system. 
+test.py will create and populate the testfiles folder on the PC. The files are frozen into frozenfiles.py. The tests compare behaviour of file operations of the freezeFS file system and the standard file system. 
 
 ## Performance
 
