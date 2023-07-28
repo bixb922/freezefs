@@ -36,7 +36,7 @@ _DIRENTRY_UTF8_WIDTH = 1
 # does not improve much.
 # A setting of zero adjusts buffer based on the file.read(size) parameter, but
 # the buffer is allocated once only.
-_decode_buffer_size = 100
+_decode_buffer_size = 0
 
 
 def set_decode_buffer_size( n ):
@@ -368,4 +368,3 @@ def deploy_fs( direntries, target, silent ):
                 _verbose_print( silent, "deploy",  f"Could not create folder {dest}, {e}" )
                 raise
             _verbose_print( silent, "deploy",  f"Folder {dest} created" )
-
