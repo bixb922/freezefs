@@ -267,7 +267,7 @@ test.py will create and populate the testfiles folder on the PC. The files are f
 
 ## Performance
 
-File operations are comparable or a somewhat faster than littlevfs2 on my ESP32-S3 with PSRAM. The only operation that is slower is file.read(size) for a file opened with "r" and the size parameter less than about 10 characters. file.read(1) is about double the time of littlevfs2. All other operations like read(), readline(), readlines(), open(), close(), os.listdir(), os.ilistdir(), os.statvfs(), os.stat() take similar or less time of littlevfs2.
+File operations are comparable or a somewhat faster than littlevfs2 on my ESP32-S3 with PSRAM. The only operation that is slower is file.read(size) for a file opened with "r" and the size parameter less than about 10 characters. file.read(1) is about double the time of littlevfs2. 
 
 ## Dependencies
 These standard MicroPython libraries are needed: os, io.BytesIO, collections.OrderedDict and errno. 
