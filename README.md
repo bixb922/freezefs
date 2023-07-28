@@ -93,7 +93,7 @@ b'\xff\xd8\xff\xe0\x00\x10JFIF'
 >>> z.close()
 ```
 
-In this test case, the file system gets created in RAM instead of flash, so all files are now loaded to RAM. When freezing myfolder.py with the MicroPython image, the file data resides in flash and uses no RAM. Other than that, you can test the functionality.
+In this test case, the file system gets created in RAM instead of flash, so all files are now loaded to RAM. When freezing myfolder.py with the MicroPython image, the file data resides in flash and uses no RAM. However, the functionality can be tested easily this way.
 
 ## freezeFS.py  utility
 
