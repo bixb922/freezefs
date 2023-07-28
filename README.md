@@ -3,6 +3,8 @@
 
 FreezeFS is a utility that freezes file structures into a MicroPython image. It converts folders into Python source files and mounts them as read-only Virtual File Systems on microcontrollers. This allows  standard access to the files with low RAM usage. It also offers the option to copy files for initial deployment. Overall, it simplifies deploying text and binary files with a MicroPython image.
 
+This software is in beta testing stage.
+
 ## Description
 freezeFS.py  is a utility program that runs on a PC and converts an arbitrary folder, subfolder and file structure into a Python source file. The generated Python file can then be frozen as bytecode into a MicroPython image together with the Virtual File System driver vfsfrozen.py.
 
@@ -201,8 +203,6 @@ ilistdir will show file type (0x4000 for folders, 0x8000 for files as usual) and
 If file.read(size) with size>0 is used, a 400 byte buffer for UTF-8 decoding is allocated for that file, and data is read to
 the buffer for decoding UTF-8 to MicroPython strings.You can use FreezeFS.set_decode_buffer_size( n ) to change that value. "n" must be > 16 bytes.
 
->>>>> HACER COMENTARIO SOBRE WRITE?
-
 ## Unit tests
 
 The /test folder on github has unit tests. 
@@ -228,7 +228,7 @@ Python 3.10 or later must be installed on the PC.
 
 The code is Python only. No C/C++ code. There are no processor or board specific dependencies.
 
-¡
+
 ## Compatibility
 Tested with MicroPython 1.20 and Python 3.10.7 and 3.11.4.
 
