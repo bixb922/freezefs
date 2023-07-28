@@ -57,7 +57,6 @@ def write_data(  pc_infolder, pc_outfile, target, on_import, silent ):
         if len( mp_path ) > MAX_FILENAME_LEN:
             raise ValueError(f"File name longer than {MAX_FILENAME_LEN}: {mp_path} ")
         fileinfo =  ( pc_infolder / pc_path, mp_path, var )
-        print(f"{fileinfo=}")
         files.append( fileinfo )
         var += 1
     files_to_python( files, pc_outfile, target, on_import )
@@ -191,7 +190,6 @@ if __name__ == "__main__":
         if target.endswith("/") and target != "/":
             target = target[0:-1]
 
-    print(f"{pc_infolder=} {pc_outfile=} {target=} {on_import=}")
     print(f'Writing Python file {pc_outfile}.')
     
     if not write_data( pc_infolder, pc_outfile, target, on_import, silent ):
@@ -212,3 +210,4 @@ if __name__ == "__main__":
         print(f"On import the file system will be copied once to {t}." )
     
   
+
