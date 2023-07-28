@@ -47,6 +47,35 @@ The next step is to include myfolder.py the manifest.py used for freezing the Mi
 
 When booting up the microcontroller, and once ```import myfolder``` has been executed, the above file structure is mounted (using os.mount() internally) at /myfolder, and the files and folders will appear under /myfolder on the microcontroller as read only files. The files are not copied to /myfolder, but remain in the MicroPython image on flash.
 
+To try out the example, create myfolder with your files and subfolders, and run:
+```
+python freezeFS.py myfolder myfolder.py
+% mpremote cp vfsfrozen.py :
+Writing Python file myfolder.py.
+Appended file myfolder\file1.txt->/file1.txt, 100 bytes
+Appended folder myfolder\mysubfolder->/mysubfolder
+Appended file myfolder\mysubfolder\file20.txt->/mysubfolder/file20.txt, 10 bytes
+Appended file myfolder\mysubfolder\file30.txt->/mysubfolder/file30.txt, 20 bytes
+Sum of file sizes 130 bytes, 3 files 1 folders
+myfolder.py written successfully.
+On import the file system will be mounted at /myfolder.
+% mpremote cp myfolder.py :
+% mpremote
+>>>import myfolder.py
+vfsfrozen mount: mounted filesystem at /myfolder
+>>> os.listdir("/myfolder")
+['file1.txt', 'mysubfolder']
+>>> os.listdir("/myfolder/mysubfolder")
+['file20.txt', 'file30.txt']
+>>> x=open("/myfolder/file1.txt")
+>>> x.read()
+'Hello, this is a text file. Unicode está soportado. '
+>>> x.close()
+```
+os.listdir should now show the frozen files and folders. open("/myfolder/myfile.data") will open that file. 
+
+In this test case, the file system gets created in RAM instead of flash, so all files are now loaded to RAM. When freezing myfolder.py with the MicroPython image, the file data resides in flash and uses no RAM. Other than that, you can test the functionality.
+
 ## freezeFS.py  utility
 
 You run this program on your PC to freeze a folder and its content (files and subfolders) to a .py file. 
@@ -251,9 +280,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-
-
 
 
 
