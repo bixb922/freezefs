@@ -1,4 +1,4 @@
-# FreezeFS: Freeze file structures into MicroPython images to mount or deploy files 
+# freezeFS: Freeze file structures into MicroPython images to mount or deploy files 
 ## Purpose
 
 freezeFS is a utility that freezes file structures into a MicroPython image. It converts folders into Python source files and mounts them as read-only Virtual File Systems on microcontrollers. This allows  standard access to the files with low RAM usage. It also offers the option to copy files for initial deployment. Overall, it simplifies deploying text and binary files with a MicroPython image.
