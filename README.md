@@ -67,9 +67,9 @@ vfsfrozen mount: mounted filesystem at /myfolder
 ['file1.txt', 'mysubfolder']
 >>> os.listdir("/myfolder/mysubfolder")
 ['file20.txt', 'file30.txt']
->>> x=open("/myfolder/file1.txt")
+>>> x=open("/myfolder/mysubfolder/file20.txt")
 >>> x.read()
-'Hello, this is a text file. Unicode está soportado. '
+'Hello 1234'
 >>> x.close()
 ```
 os.listdir should now show the frozen files and folders. open("/myfolder/myfile.data") will open that file. 
