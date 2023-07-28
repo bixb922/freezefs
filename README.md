@@ -50,7 +50,6 @@ When booting up the microcontroller, and once ```import myfolder``` has been exe
 To try out the example, create myfolder with your files and subfolders, and run:
 ```
 python freezeFS.py myfolder myfolder.py
-% mpremote cp vfsfrozen.py :
 Writing Python file myfolder.py.
 Appended file myfolder\file1.txt->/file1.txt, 100 bytes
 Appended folder myfolder\mysubfolder->/mysubfolder
@@ -59,6 +58,7 @@ Appended file myfolder\mysubfolder\file30.txt->/mysubfolder/file30.txt, 20 bytes
 Sum of file sizes 130 bytes, 3 files 1 folders
 myfolder.py written successfully.
 On import the file system will be mounted at /myfolder.
+% mpremote cp vfsfrozen.py :
 % mpremote cp myfolder.py :
 % mpremote
 >>>import myfolder.py
