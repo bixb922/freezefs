@@ -247,7 +247,7 @@ remove, mkdir and rename will raise an OSError( errno.EPERM ).
 ilistdir will show file type (0x4000 for folders, 0x8000 for files as usual) and file size. Unused fields returned by ilistdir are set to zero.
 
 For files opened in "r" or "rt" mode and if file.read(size) with size>0 is used, a buffer for UTF-8 decoding is allocated for that file, and data is read to
-the buffer for decoding UTF-8 to MicroPython strings. You can use vfsfrozen.set_decode_buffer_size( n ) to change that value. A good value is four times the size of the largest file.read(size). Setting n to zero will allocate a buffer dynamically based on the size parameter of the first file.read(size) with a maximum of 400. The default is 0 (automatic adjust).
+the buffer for decoding UTF-8 to MicroPython strings. You can use vfsfrozen.set_decode_buffer_size( n ) to change that value.
 
 For files opened in "rb" mode, or files in "r"/"rt" mode with readline() or read() operations, no decode buffer is necessary.
 
