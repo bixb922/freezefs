@@ -138,8 +138,7 @@ Utility to convert a folder and its subfolders to a single Python source.
 The output file can be then frozen in a Micropython image together with
 vfsfrozen.py and mounted as a readonly file system.
 With the --on_import mount option, the file system will be mounted on import (this is the default).
-With the --on_import deploy option, the content will be copied the first time to flash. If the target folder already exists, no file is copied nor modified. The file system is not mounted.
-
+With the --on_import deploy option, the content will be copied the first time to flash. If the target folder is not empty, no file is copied nor modified. The file system is not mounted.
 Examples:
 freezeFS.py input_folder frozenfolder.py
 freezeFS.py input_folder frozenfolder.py --target=/myfiles --on_import mount
