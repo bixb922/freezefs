@@ -1,4 +1,4 @@
-# freezeFS: Freeze file structures into MicroPython images to mount or deploy files 
+# freezeFS: Freeze file structures into MicroPython images to mount or deploy 
 ## Purpose
 
 freezeFS is a utility that freezes file structures into a MicroPython image. It converts folders into Python source files and mounts them as read-only Virtual File Systems on microcontrollers. This allows  standard access to the files with low RAM usage. It also offers the option to copy files for initial deployment. Overall, it simplifies deploying text and binary files with a MicroPython image.
@@ -8,7 +8,10 @@ freezeFS.py  is a utility program that runs on a PC and converts an arbitrary fo
 
 When the generated Python file is imported, the file structure is mounted with os.mount() as a read only Virtual File System, which can be accessed on the microcontroller with regular file operations such as open in  "r" or "rb" mode, read, readinto, readline, seek, tell, close, listdir, ilistidr, stat. 
 
-If the deploy option is used, the files and folders of the frozen files are copied to flash.  This enables initializing configuration and data files when booting the MicroPython image the first time.
+If the deploy option is used, the files and folders of the frozen files are copied to the standard flash file system.  This enables installing configuration and data files when booting the MicroPython image the first time.
+
+## Feedback
+Please leave feedback in the issues section. If it works for you, please star the repository.
 
 ## Installation
 The software is implemented in two files: freezeFS.py for the PC and vfsfrozen.py for the microcontroller.
@@ -45,8 +48,9 @@ import myfolder
 ```
 The next step is to include myfolder.py the manifest.py used for freezing the MicroPython image, as well as vfsfrozen.py, which is the file system manager of this utility.
 
-When booting up the microcontroller, and once ```import myfolder``` has been executed, the above file structure is mounted (using os.mount() internally) at /myfolder, and the files and folders will appear under /myfolder on the microcontroller as read only files. The files are not copied to /myfolder, but remain in the MicroPython image on flash.
+When booting up the microcontroller, and once ```import myfolder``` has been executed, the above file structure is mounted (using ```os.mount()``` internally) at /myfolder, and the files and folders will appear under /myfolder on the microcontroller as read only files. The files are not copied to /myfolder, but remain in the MicroPython image on flash.
 
+## Try out the example
 To try out the example, create myfolder with your files and subfolders, and run:
 ```
 python freezeFS.py myfolder myfolder.py
@@ -92,7 +96,20 @@ os.stat("/myfolder/images")
 b'\xff\xd8\xff\xe0\x00\x10JFIF'
 >>> z.close()
 ```
-
+If you add ```import myfolder``` to ```boot.py``` then you can inspect the mounted the file system with mpremote:
+```
+% mpremote ls myfolder
+ls :myfolder
+           0 css/
+        1150 favicon.ico
+           0 images/
+        7475 index.html
+        5671 tunes.html
+% mpremote ls myfolder/css
+ls :myfolder/css
+       14050 mystyles.css
+        7870 normalize.css
+```
 In this test case, the file system gets created in RAM instead of flash, so all files are now loaded to RAM. When freezing myfolder.py with the MicroPython image, the file data resides in flash and uses no RAM. However, the functionality can be tested easily this way.
 
 ## freezeFS.py  utility
@@ -114,7 +131,7 @@ options:
                         of the output file. Example: --target /myfiles. Must start with /
   --on_import {mount,deploy,no_action}, -o {mount,deploy,no_action}
                         Action when importing output module. Default is mount.
-  --silent, -s          Supress messages when mounting/copying files.
+  --silent, -s          Suppress messages when mounting/copying files.
 ```
 
 
@@ -130,11 +147,13 @@ With this option, the folder is not mounted but copied once to the file system a
 
 The next time the system boots up, this software checks whether the target folder is empty. If not empty, it exits without modifying the files.
 
-To copy the content of the frozen file system, use the --on_import=deploy option on the PC and then ```import``` the .py with the frozen files in your main.py or boot.py. Preferably, the import should be in frozen code, for example in _boot.py. 
+To copy the content of the frozen file system, use the --on_import=deploy option on the PC and then ```import``` the .py with the frozen files in your ```main.py``` or ```boot.py```. Preferably, the import should be in frozen code, for example in ```_boot.py```. 
 
 The deploy option will automatically create the folders and subfolders specified in --target.
 
 deploy does not mount the file system to do the file copy. However you can mount the file system at any point to access and retrieve files.
+
+With ```--on_import=deploy target=/``` you can deploy files to the root of the file system. For example, you can deploy main.py this way.
 
 ## An example for deploy
 Suppose need several folders with files on the microcontroller:
@@ -176,9 +195,11 @@ import frozen_media
 ```
 Then you would have to compile and create the MicroPython image (for example, a .bin file) and write that to the microcontroller's flash.
 
-On the first boot, main.py, config.py will be copied to flash. The data folder will be created and it's content copied to flash. At /static and at /media, read only file systems with the files will be mounted.
+On the first boot, ```main.py```, ```config.py``` will be copied to flash. The data folder will be created and it's content copied to flash. At /static and at /media, read only file systems with the files will be mounted.
 
-The import statements may be left in _boot.py. Since now the root folder and the data folder have files, vfsfrozen.py will not modify those further.
+The import statements for deploying may be left in ```_boot.py```. Since now the root folder and the data folder have files, vfsfrozen.py will not modify those further.
+
+If all folders content is erased, the next boot will deploy the files again. This can be used as a "factory reset".
 
 
 ### freezeFS.py  --target
@@ -196,7 +217,7 @@ If an exception occurs during mount, deploy and umount, the exception will be ra
 
 ## The frozen .py file
 
-The output file of the freezeFS.py  utility is a module with the frozen file system. This module contains a const with all the file data. MicroPython will access the file data directly in flash. The generated  .py file also has the mount, umount and deploy functions. 
+The output file of the freezeFS.py  utility is a module with the frozen file system. This generated module contains const with all the file data. MicroPython will access the file data directly in flash. The generated  .py file also has the mount, umount and deploy functions. 
 
 Sample output when importing a generated output .py module, with --on_import=mount
 ```
@@ -218,38 +239,40 @@ vfsfrozen deploy: file /fz/sub1/file2.txt copied.
 vfsfrozen deploy: Folder /fz/sub1/sub2 created
 vfsfrozen deploy: file /fz/sub1/sub2/file2.txt copied.
 ```
-Note that the second ```import frozenfiles``` does not attempt to mount again. This is a result of how Python works: initialization code is called for the first import after boot only.
+Note that the second ```import frozenfiles``` will not attempt to mount again. This is a result of how Python works: initialization code is called for the first import after boot only. A second try of frozenfiles.deploy() won't deploy again either, because the target folder is not empty anymore.
 
-The generated .py module exposes the following functions: mount(), umount(), deploy(). These are the same that are called on import, and are provided to be called manually in case of freezing with on_import=no_action. 
+The generated .py module exposes the following functions: ```mount()```, ```umount()```, ```deploy()```. These are the same that are called by the on_import option, and are provided to be called manually in case of freezing with on_import=no_action. In all cases, the default value for mount_point, target and silent_mode are the parameters provided in the freezeFS command.
 
-* ```mount( mount_point )``` If not mounted, this function will mount the file system on the specified mount point. This option allows to mount/dismount manually. If mount_point is omiitted, the mount_point specified by the --target option of the freezeFS.py  command is used.
+* ```mount( mount_point, silent_mode )``` If not mounted, this function will mount the file system on the specified mount point. This option allows to mount manually. If mount_point is omitted, the mount_point specified by the --target option of the freezeFS.py  command is used.
 
-* ```umount() ``` This will dismount the virtual file system.
+* ```umount( mount_point, silent_mode ) ``` This will dismount the virtual file system at the mount_point specified. You also can use os.umount(). The default value for mount_point is the mount point specified by the --target option of the freezeFS.py command.
 
-* ```deploy( target )``` if the target folder is empty, all files in the frozen module will be copiedto the folder specified by target. The folder and it's subfolder will be created.
+* ```deploy( target, silent_mode )``` if the target folder is empty, all files in the frozen module will be copied to the folder specified by target. The folder and it's subfolder will be created.
 
-* The DATE_FROZEN attribute has the date/time when the file structure was frozen.
+* The get_date_frozen() function will return a string with date/time when the file structure was frozen.
+
+* The get_version() function will return 1.
 
 ## The VFS module (vfsfrozen.py)
 
 This is the module that implements the Virtual File System. You have to install it on your microcontroller by copying the vfsfrozen.py file to your root folder or the /lib folder, or better freeze via manifest.py to the MicroPython image.
 
-This module implements mount, umount, chdir, getcwd, ilistdir, listdir, stat, open, close, read, readinto, readline, readlines, the iterator for reading lines and the decoding of UTF-8 text files to MicroPython strings.
+This module implements ```os.mount```, ```os.umount```, ```os.chdir```, ```os.getcwd```, ```os.ilistdir```, ```os.listdir```, ```os.stat```, ```open```, ```close```, ```read```, ```readinto```, ```readline```, ```readlines```, the iterator for reading lines and the decoding of UTF-8 format files to MicroPython strings.
 
-statvfs returns block size of 1. The file system size is the sum of all file sizes, without overhead. Mode flag is 1 (read only). The maximum file length is set to 255.
+```statvfs``` returns block size of 1. The file system size is the sum of all file sizes, without overhead. Mode flag is 1 (read only). The maximum file length is set to 255.
 
-open will only accept modes "r", "rt" and "rb". As usual, "r" will decode UTF-8 to strings, and "rb" will return bytes (bytearray).
+```open``` will only accept modes "r", "rt" and "rb". As usual, "r" will decode UTF-8 to strings, and "rb" will return bytes.
 
-file.open with modes "r+w", "a", etc. raises an OSError, since the file system frozen into the MicroPython image is read only.
+```open``` with modes "w", "wb", "a", etc. raises an OSError, since the file system frozen into the MicroPython image is read only.
 
-remove, mkdir and rename will raise an OSError( errno.EPERM ).
+```remove```, ```mkdir``` and ```rename``` will raise an OSError( errno.EPERM ).
 
-ilistdir will show file type (0x4000 for folders, 0x8000 for files as usual) and file size. Unused fields returned by ilistdir are set to zero.
+```ilistdir``` will show file type (0x4000 for folders, 0x8000 for files as usual) and file size. Unused fields returned by ilistdir are set to zero.
 
-For files opened in "r" or "rt" mode and if file.read(size) with size>0 is used, a buffer for UTF-8 decoding is allocated for that file, and data is read to
-the buffer for decoding UTF-8 to MicroPython strings. You can use vfsfrozen.set_decode_buffer_size( n ) to change that value.
+For files opened in "r" or "rt" mode and if ```file.read(size)``` with size>0 is used, a buffer for UTF-8 decoding is allocated for that file, and data is read to
+the buffer to decode UTF-8 to MicroPython strings. You can use vfsfrozen.set_decode_buffer_size( n ) to change that value. A good value is four times the size of the largest ```file.read(size)```. Setting n to zero will allocate a buffer dynamically based on the size parameter of the first file.read(size) with a maximum of 400 bytes. The default is 256 bytes.
 
-For files opened in "rb" mode, or files in "r"/"rt" mode with readline() or read() operations, no decode buffer is necessary.
+For files opened in "rb" mode, or files in "r"/"rt" mode with readline() or read()  operations, no decode buffer is necessary.
 
 ## Unit tests
 
@@ -263,18 +286,17 @@ mpremote cp vfsfrozen.py :
 mpremote cp frozenfiles.py : 
 mpremote run test.py
 ```
-test.py will create and populate the testfiles folder on the PC. The files are frozen into frozenfiles.py. The tests compare behaviour of file operations of the freezeFS file system and the standard file system. 
-
-## Performance
-
-File operations are comparable or a somewhat faster than littlevfs2 on my ESP32-S3 with PSRAM. The only operation that is slower is file.read(size) for a file opened with "r" and the size parameter less than about 10 characters. file.read(1) is about double the time of littlevfs2. 
+Running test.py on the PC will create and populate the testfiles folder. The files are frozen into frozenfiles.py. The tests compare behaviour of file operations of the freezeFS file system and the standard file system. 
 
 ## Dependencies
 These standard MicroPython libraries are needed: os, io.BytesIO, collections.OrderedDict and errno. 
 
-Python 3.10 or later must be installed on the PC.
+Python 3.10 or later must be installed on the PC. Probably earlier versions of Python will work too.
 
 The code is Python only. No C/C++ code. There are no processor or board specific dependencies.
+
+# Version
+Version number 1.
 
 ## Compatibility
 Tested with MicroPython 1.20 and Python 3.10.7 and 3.11.4.
