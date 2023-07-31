@@ -10,9 +10,6 @@ When the generated Python file is imported, the file structure is mounted with o
 
 If the deploy option is used, the files and folders of the frozen files are copied to the standard flash file system.  This enables installing configuration and data files when booting the MicroPython image the first time.
 
-## Feedback
-Please leave feedback in the issues section. If it works for you, please star the repository.
-
 ## Installation
 The software is implemented in two files: freezeFS.py for the PC and vfsfrozen.py for the microcontroller.
 
@@ -288,6 +285,8 @@ mpremote run test.py
 ```
 Running test.py on the PC will create and populate the testfiles folder. The files are frozen into frozenfiles.py. The tests compare behaviour of file operations of the freezeFS file system and the standard file system. 
 
+I ran these tests on a Raspberry Pi Pico, standard ESP32 and ESP32-S3 with PSRAM.
+
 ## Dependencies
 These standard MicroPython libraries are needed: os, io.BytesIO, collections.OrderedDict and errno. 
 
@@ -300,6 +299,9 @@ Version number 1.
 
 ## Compatibility
 Tested with MicroPython 1.20 and Python 3.10.7 and 3.11.4.
+
+## Feedback
+Please leave feedback in the issues section. If it works for you, please star the repository. That's my way to know if this software is in use.
 
 ## Copyright and license
 Source code and documentation Copyright (c) 2023 Hermann Paul von Borries.
