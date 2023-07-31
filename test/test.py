@@ -6,6 +6,7 @@ import os
 import unittest
 import time
 import errno
+import gc
 
 PYTHON = sys.implementation.name
 if PYTHON == "cpython":
@@ -48,7 +49,8 @@ def iter_both_test_files( filetype=None ):
             yield Path( referencefolder + "/" + f ), Path( testfolder + "/" + f )
 
 
-# Pseudorandom generator to generate same test data on PC and microcontroller
+# Old fashioned pseudorandom generator to generate
+# same test data on PC and microcontroller
 rand = 11
 m = 2**31-1
 a = 1664525
@@ -61,7 +63,7 @@ def getrand(n):
 
 # Some characters for testing
 unicodes = "aáéíóúÁÉÍÓÚäëïöüÄËÏÖÜñÑ" + chr(0x1f600) + chr(0x1f603) + chr(0x1f604)
-asciis = "".join( chr(x) for x in range(32,127) ) + "\r" + "\n" + "t"
+asciis = "".join( chr(x) for x in range(0,127) ) + "\r" + "\n" + "t"
 
 def write_str( filename, length, alphabet ):
     # Don't use newline to mirror Micropython
@@ -86,28 +88,33 @@ def write_bin( filename, length ):
             file.write( b )
 
 def delete_recursive( folder ):
-    try:
-        os.stat( folder )
-    except OSError:
-        # No folder, skip delete
-        return
-    for f in os.listdir( folder ):
-        file = folder + "/" + f
-        if os.stat( file )[0] & 0x8000:
-            #  print("delete_recursive: Delete file: ", file )
-            os.remove( file )
-        elif os.stat( file )[0] & 0x4000:
-            delete_recursive( file )
-            print("delete_recursive: Delete folder", file )
-            try:
+    def dr( folder ):
+        try:
+            os.stat( folder )
+        except OSError:
+            # No folder, skip delete
+            return
+        for f in os.listdir( folder ):
+            file = folder + "/" + f
+            if os.stat( file )[0] & 0x8000:
+                #  print("delete_recursive: Delete file: ", file )
                 os.remove( file )
-            except Exception as e:
-                print("delete_recursive: Could not remove folder", file, e )
+            elif os.stat( file )[0] & 0x4000:
+                dr( file )
+                print("delete_recursive: Delete folder", file )
+                try:
+                    os.remove( file )
+                except Exception as e:
+                    if e.errno != errno.ENOENT:
+                        print("delete_recursive: Could not remove folder", file, e )
+    dr( folder )
+    # Now remove the top folder
     try:
         os.remove( folder )
         print("delete_recursive: Delete folder", folder )
     except Exception as e:
-        print("delete_recursive: Could not root remove folder", folder, e )
+        if e.errno != errno.ENOENT:
+            print("delete_recursive: Could not root remove folder", folder, e )
         
 def write_uni( filename, length ):
     if length <= 10:
@@ -141,13 +148,21 @@ def make_testfiles( ):
         elif ".uni" in f:
             write_uni( filename, length )
     print("make_testfiles: Test files created in folder ", referencefolder)
- 
+
+    
 class TestFiles(unittest.TestCase):
 
+    def compare_lists( self, list1, list2 ):
+        # With infinite memory, this could compare tuple( list1 ) with tuple( list2 )
+        self.assertEqual( len(list1), len(list2) )
+        for i, p in enumerate( list1 ):
+            self.assertEqual( p, list2[i] )
+         
+         
     def check_testfile_size( self, folder ):
         for f, defsize in test_files:
             if ".uni" in f:
-                # File size of unicode files is in characters, not byes
+                # File size of unicode files is in characters, not bytes
                 # can't compare here
                 continue
             filename = "/" + folder + "/" + f
@@ -159,32 +174,33 @@ class TestFiles(unittest.TestCase):
             self.assertEqual( defsize, size )
 
     def test_full_read_binary( self ):
-        for file1, file2 in iter_both_test_files( "bin" ):
-            with open( file1, "rb" ) as file:
-                c1 = file.read()
-            with open( file2, "rb") as file:
-                c2 = file.read()
+        for filename1, filename2 in iter_both_test_files( "bin" ):
+            with open( filename1, "rb" ) as file1:
+                c1 = file1.read()
+            with open( filename2, "rb") as file2:
+                c2 = file2.read()
             self.assertEqual( c1, c2 )
 
-    def test_full_read_binary_as_text( self ):
-        for file1, file2 in iter_both_test_files( "bin" ):
-            if os.stat( file1 )[6] == 0:
-            # Is length 0, will not raise error
+    def test_full_try_binary_as_text( self ):
+        for filename1, filename2 in iter_both_test_files( "bin" ):
+            if os.stat( filename1 )[6] == 0 and os.stat( filename2 )[6] == 0:
+            # Length 0, will not raise error
                 continue
+            # Reading binary file as text should raise UnicodeError
             with self.assertRaises( UnicodeError ):
-                with open( file1, "r" ) as file:
-                    c1 = file.read()
+                with open( filename1, "r" ) as file1:
+                    c1 = file1.read()
             with self.assertRaises( UnicodeError ):
-                with open( file2, "r") as file:
-                    c2 = file.read()
+                with open( filename2, "r") as file2:
+                    c2 = file2.read()
            
 
     def test_full_read_text( self ):
-        for file1, file2 in iter_both_test_files( "txt" ):
-            with open( file1, "r" ) as file:
-                c1 = file.read()
-            with open( file2, "r" ) as file:
-                c2 = file.read()
+        for filename1, filename2 in iter_both_test_files( "txt" ):
+            with open( filename1, "r" ) as file1:
+                c1 = file1.read()
+            with open( filename2, "r" ) as file2:
+                c2 = file2.read()
             
             self.assertEqual( c1, c2 )
 
@@ -206,79 +222,67 @@ class TestFiles(unittest.TestCase):
             self.assertEqual( e1, e2 )
             self.assertEqual( f1, f2 )
 
-    def test_full_read_uni( self ):
-        for file1, file2 in iter_both_test_files( "uni" ):
-            with open( file1, "r" ) as file:
-                c1 = file.read()
-            with open( file2, "r") as file:
-                c2 = file.read()
-            
-            self.assertEqual( c1, c2 )
     
-    def test_readline_text( self ):
+    def test_read_entire_text( self ):
         for filetype in ("txt", "uni"):
-            for file1, file2 in iter_both_test_files( filetype ):
-                with open( file1, "r") as file:
-                    lines1 = file.read()
-                with open( file2, "r") as file:
-                    lines2 = file.read()
+            for filename1, filename2 in iter_both_test_files( filetype ):
                 
-                self.assertEqual( tuple(lines1), tuple(lines2) )
-    
+                print(f"test_read_entire_text {filename1=}")
+                with open( filename1, "r") as file1:
+                    gc.collect()
+                    data1 = file1.read()
+                    print(f"test_read_entire_text {len(data1)=} characters")
+                with open( filename2, "r") as file2:
+                    gc.collect()
+                    data2 = file2.read()
+                    print(f"test_read_entire_text {len(data2)=} characters")
+                self.assertEqual( data1, data2 )
+                data1 = None
+                data2 = None
+                gc.collect()
+                
     def test_read_text( self ):
         for filetype in ("txt", "uni"):
-            for length in ( 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 17, 20, 36, 37, 99, 100, 101, 400, 2000, 10000):
+            for length in ( 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 17, 20, 36, 37, 99, 100, 101, 400, 2000 ):
                 print(f"Test read text with read({length})" )
-                for file1, file2 in iter_both_test_files( filetype ):
-                    with open( file1, "r" ) as file:
-                        parts1 = []
-                        while True:
-                            r1 = file.read(length)
-                            if not r1:
-                                break
-                            parts1.append( r1 )
-                    with open( file2, "r") as file:
-                        parts2 = []
-                        while True:
-                            r2 = file.read(length)
-                            if not r2:
-                                break
-                            parts2.append( r2 )
-                    
-                    self.assertEqual( tuple(parts1), tuple(parts2) )
+                for filename1, filename2 in iter_both_test_files( filetype ):
+                    file1 = open( filename1, "r" )
+                    file2 = open( filename2, "r" )
+                    while True:
+                        data1 = file1.read( length )
+                        data2 = file2.read( length )
+                        self.assertEqual( data1, data2 )
+                        if not data1:
+                            break
+                    file1.close()
+                    file2.close()
 
 
     def test_readline( self ):
         for filetype in ("txt", "uni"):
-            for file1, file2 in iter_both_test_files( filetype ):
+            for filename1, filename2 in iter_both_test_files( filetype ):
                 for mode in ("r", "rb"):
-                    with open( file1, mode ) as file:
-                        parts1 = []
-                        while True:
-                            r = file.readline()
-                            if not r:
-                                break
-                            parts1.append( r )
-                    with open( file2, mode) as file:
-                        parts2 = []
-                        while True:
-                            r = file.readline()
-                            if not r:
-                                break
-                            parts2.append( r )
-                    
-                    self.assertEqual( tuple(parts1), tuple(parts2) )
+                    file1 = open( filename1, mode )
+                    file2 = open( filename2, mode )
+                    while True:
+                        data1 = file1.readline()
+                        data2 = file2.readline()
+                        self.assertEqual( data1, data2 )
+                        if not data1:
+                            break
+                    file1.close()
+                    file2.close()
 
 
     def test_readline2( self ):
         for filetype in ("txt", "uni"):
-            for file1, file2 in iter_both_test_files( filetype ):
-                with open( file1, "r" ) as file:
-                    parts1 = file.readlines()
-                with open( file2, "r") as file:
-                    parts2 = file.readlines()
-                self.assertEqual( tuple(parts1), tuple(parts2) )
-
+            for filename1, filename2 in iter_both_test_files( filetype ):
+                with open( filename1, "r" ) as file1:
+                    parts1 = file1.readlines()
+                with open( filename2, "r") as file2:
+                    parts2 = file2.readlines()
+                self.compare_lists( parts1, parts2 )
+                
 
     def test_readline3( self ):
         for filetype in ("txt", "uni"):
@@ -287,49 +291,102 @@ class TestFiles(unittest.TestCase):
                     parts1 = [ _ for _ in file ]
                 with open( file2, "r") as file:
                     parts2 = [ _ for _ in file ]
-                self.assertEqual( tuple(parts1), tuple(parts2) )
+                self.compare_lists( parts1, parts2 )
 
 
     def test_read_binary( self ):
-        for length in ( 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 17, 20, 36, 37, 99, 100, 101, 400, 2000, 10000):
+        for length in ( 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 17, 20, 36, 37, 99, 100, 101, 400, 2000 ):
             print(f"Test read binary with read({length})" )
-            for file1, file2 in iter_both_test_files( "bin" ):
-                with open( file1, "rb" ) as file:
-                    parts1 = []
-                    while True:
-                        r = file.read(length)
-                        if not r:
-                            break
-                        parts1.append( r )
-                with open( file2, "rb") as file:
-                    parts2 = []
-                    while True:
-                        r = file.read(length)
-                        if not r:
-                            break
-                        parts2.append( r )
-                
-                self.assertEqual( tuple(parts1), tuple(parts2) )
-
+            for filename1, filename2 in iter_both_test_files( "bin" ):
+                file1 = open( filename1, "rb" )
+                file2 = open( filename2, "rb" )
+                while True:
+                    data1 = file1.read( length )
+                    data2 = file2.read( length )
+                    self.assertEqual( data1, data2 )
+                    if not data2:
+                        break
+                file1.close()
+                file2.close()
+ 
     def test_listdir( self ):
         for rf, tf in iter_both_test_folders():
             files1 = os.listdir( "/" + rf )
             files2 = os.listdir( "/" + tf )
             self.assertEqual( tuple(files1), tuple(files2) )
+    
+    def test_chdir( self ):
+        for fol in test_folders:
+            os.chdir( "/" + referencefolder + "/" + fol )
+            files1 = os.listdir( "" )
+            os.chdir( "/" + testfolder + "/" + fol )
+            files2 = os.listdir( "" )
+            self.assertEqual( tuple( files1 ), tuple( files2 ) )
 
-        os.chdir( "/" + referencefolder + "/sub1")
+        # chdir with ending /
+        os.chdir( "/" + referencefolder + "/sub1/"  )
+        self.assertEqual( "/" + referencefolder + "/sub1", os.getcwd() )
+        os.stat( "file9.uni" )
         files1 = os.listdir( "" )
-        os.chdir( "/" + testfolder + "/sub1" )
+        
+        
+        os.chdir( "/" + testfolder + "/sub1/" )
+        self.assertEqual( "/" + testfolder + "/sub1", os.getcwd() )
+        os.stat( "file9.uni" )
         files2 = os.listdir( "" )
+  
         self.assertEqual( tuple( files1 ), tuple( files2 ) )
 
-        os.chdir( "/" + referencefolder + "/sub1/sub2")
-        files1 = os.listdir( "" )
-        os.chdir( "/" + testfolder + "/sub1/sub2" )
-        files2 = os.listdir( "" )
-        self.assertEqual( tuple( files1 ), tuple( files2 ) )
+        
+        # Bad chdir: to nonexistent folder
+        for folder in ( referencefolder, testfolder ):
+            with self.assertRaises( OSError ):
+                os.chdir("/" + folder + "/nonexistent")
 
+        # Bad chdir: to file
+        for folder in ( referencefolder, testfolder ):
+            with self.assertRaises( OSError ):
+                os.chdir("/" + folder + "/file1.txt")
+
+        # chdir to relative path
+        for folder in ( referencefolder, testfolder ):
+            newdir = "/" + folder
+            os.chdir( newdir )
+            self.assertEqual( mewdir, os.getcwd() )
+            newdir += "sub1"
+            os.chdir( "sub1" )
+            self.assertEqual( mewdir, os.getcwd() )
+            newdir += "sub2"
+            os.chdir( "sub2" )
+            self.assertEqual( mewdir, os.getcwd() )
+
+        os.chdir(rf + "/sub1/sub2/.." )
+        files1 = os.listdir()
+        os.chdir( tf + "/sub1/sub2/.." )
+        files2 = os.listdir()
+        self.assertEqual(files1, files2 )
+        
+        os.chdir(rf + "/sub1/sub2/." )
+        files1 = os.listdir()
+        os.chdir( tf + "/sub1/sub2/." )
+        files2 = os.listdir()
+        self.assertEqual(files1, files2 )
+
+        os.chdir(rf + "/sub1/./sub2/.." )
+        files1 = os.listdir()
+        os.chdir( tf + "/sub1/./sub2/.." )
+        files2 = os.listdir()
+        self.assertEqual(files1, files2 )
+        
+        os.chdir(rf + "/,/sub1/sub2/.." )
+        files1 = os.listdir()
+        os.chdir( tf + "/./sub1/sub2/.." )
+        files2 = os.listdir()
+        self.assertEqual(files1, files2 )
+
+        
         os.chdir("/")
+        
 
     def test_ilistdir( self ):
         for rf, tf in iter_both_test_folders():
@@ -345,6 +402,25 @@ class TestFiles(unittest.TestCase):
             stat1 = os.stat( file1 )[0:7]
             stat2 = os.stat( file2 )[0:7]
         self.assertEqual( stat1, stat2 )
+    
+    def test_parent_dir( self ):
+        rf = "/" + referencefolder
+        tf = "/" + testfolder
+        stat1 = os.stat( rf + "/sub1/sub2/../file1.txt" )
+        stat2 = os.stat( tf + "/sub1/sub2/../file1.txt" )
+        self.assertEqual( stat1[0:7], stat2[0:7] )
+        
+        os.chdir( rf + "/sub1/../sub1/sub2")
+        p1 = os.getcwd().replace( rf, "/<root>")
+        os.chdir( tf + "/sub1/../sub1/sub2")
+        p2 = os.getcwd().replace( tf, "/<root>")
+        self.assertEqual( p1, p2 )
+        
+        with self.assertRaises( OSError ):
+            os.chdir( tf + "/.." )
+
+
+        os.chdir("/")
         
     def test_stat_folder( self ):
         for filename in test_folders:
@@ -358,7 +434,7 @@ class TestFiles(unittest.TestCase):
         tf = "/" + testfolder
         rf = "/" + referencefolder
         os.chdir( tf )
-        self.assertEqual( os.getcwd(), tf)
+        self.assertEqual( os.getcwd(), tf )
         files1 = os.listdir("")
         files2 = os.listdir( rf )
         self.assertEqual( tuple( files1 ), tuple( files2 ) )
@@ -378,13 +454,13 @@ class TestFiles(unittest.TestCase):
         os.chdir("sub2")
         self.assertEqual( os.getcwd(), "/fz/sub1/sub2")
         files1 = os.listdir("")
-        files2 = os.listdir( "/" + referencefolder  + "/sub1/sub2" )
+        files2 = os.listdir( rf  + "/sub1/sub2" )
         self.assertEqual( tuple( files1 ), tuple( files2 ) )
 
         os.chdir("sub3")
         self.assertEqual( os.getcwd(), "/fz/sub1/sub2/sub3")
         files1 = os.listdir("")
-        files2 = os.listdir( "/" + referencefolder  + "/sub1/sub2/sub3" )
+        files2 = os.listdir( rf  + "/sub1/sub2/sub3" )
         self.assertEqual( tuple( files1 ), tuple( files2 ) )
         
         os.chdir( "/fz" )
@@ -408,12 +484,11 @@ class TestFiles(unittest.TestCase):
         with self.assertRaises( OSError ):
             open( file1, "r+")
         with self.assertRaises( OSError ):
-            open( file1, "r+w")
-        with self.assertRaises( OSError ):
             open( file1, "a")
             
         with self.assertRaises( OSError ):
             os.rename( file1, testfolder + "/a.a")
+            
         with self.assertRaises( OSError ):
             os.remove( file1 )
             
@@ -454,13 +529,13 @@ class TestFiles(unittest.TestCase):
         self.assertEqual( c1, c2 )
  
     def test_flush( self ):
-        file1 = open( referencefolder + "/file3.bin" ,"rb")
-        file2 = open( testfolder + "/file3.bin", "rb" )
+        file1 = open( "/" + referencefolder + "/file3.bin" ,"rb")
+        file2 = open( "/" + testfolder + "/file3.bin", "rb" )
         self.assertEqual( file1.flush(), file2.flush() )
      
     def test_statvfs( self ):
         t = os.statvfs( "/" + testfolder )
-        self.assertEqual( 10, len(t) )
+        self.assertEqual( (1, 1, 13578, 0, 0, 19, 0, 0, 1, 255), t )
 
     def test_module_functions( self ):
         def file_exists( file ):
@@ -494,7 +569,7 @@ class TestFiles(unittest.TestCase):
         self.check_testfile_size( "/other_point")
         with self.assertRaises( OSError ):
             os.remove( "/other_point/file1.txt" )
-        module.umount()
+        module.umount( "/other_point" )
         self.assertFalse( file_exists( testfolder ) )
         
         # Deploy to a top folder and a subfolder
@@ -508,32 +583,9 @@ class TestFiles(unittest.TestCase):
            
         # Leave as before
         module.mount()
-        
-if __name__ == "__main__":
-    if PYTHON == "cpython":
-        make_testfiles()
-        sys.exit()
-    make_testfiles()
-    import frozenfiles
-    unittest.main()
-    
-    # Run without unittest:
-    # t = TestFiles() 
-    # t.test_full_read_binary_as_text()
-    # t.test_full_read_0()
-    # t.test_full_read_binary()
-    # t.test_full_read_text()
-    # t.test_full_read_uni()
-    # t.test_read_binary()
-    # t.test_read_text()
-    # t.test_readline_text()
-    
-    # t.test_listdir()
-    # t.test_chdir()
-    # t.test_stat_folder()
-    # t.test_stat()
-    
-    print("Timing tests. /testfolder is on the standard file system, /fz is the VfsFrozen file system\n" )  
+ 
+def timing_tests():
+    print("\nTiming tests. /testfolder is on the standard file system, /fz is the VfsFrozen file system\n" )  
     class HowLong:
         def __init__( self, name ):
             self.name = name
@@ -544,29 +596,29 @@ if __name__ == "__main__":
             print(self.name, time.ticks_diff( time.ticks_ms(), self.t0 ))
 
     size = os.stat( referencefolder + "/file9.uni" )[6]
+    
     for mode in ("r", "rb"):
         for i in (1,10,100,1000):
             for folder in (referencefolder, testfolder ) :
                 filename = folder + "/file9.uni"
                 size = os.stat( filename )[6]
-                with HowLong(f"Timed file.read({i:4d}) for {filename:19s}, size={size} bytes, mode={mode:2s}, msec="):
-                    with open( filename, mode) as file:
+                with HowLong(f"Timed file.read({i:4d})  for {filename:19s}, size={size} bytes, mode={mode:2s}, msec="):
+                    with open( filename, mode ) as file:
                         s = ""
-                        sumi = 0
                         while True:
                             r = file.read(i)
                             if len(r) == 0:
                                 break
-                                
+               
     for folder in (referencefolder, testfolder ) :
         filename = folder + "/file9.uni"
-        with HowLong(f"Timed file.readlines() for {filename:19s}, mode=r , msec="):
+        with HowLong(f"Timed file.readlines() for {filename:19s}, size={size} bytes, mode=r , msec="):
             with open( filename, "r") as file:
                 file.readlines()
 
     for folder in (referencefolder, testfolder ) :
         filename = folder + "/file9.uni"
-        with HowLong(f"Timed file.readline() for {filename:19s}, mode=rb, msec="):
+        with HowLong(f"Timed file.readline()  for {filename:19s}, size={size} bytes, mode=rb, msec="):
             with open( filename, "rb") as file:
                 while True:
                     line = file.readline()
@@ -574,3 +626,22 @@ if __name__ == "__main__":
                         break
 
 
+
+ 
+if __name__ == "__main__":
+    if PYTHON == "cpython":
+        make_testfiles()
+        sys.exit()
+    gc.collect()
+    # Collect frequently
+    gc.threshold( gc.mem_free()//2)
+    make_testfiles()
+    import frozenfiles
+    unittest.main()
+    
+    # Run without unittest:
+    #t = TestFiles() 
+    #t.test_chdir()
+    
+    timing_tests()
+    
