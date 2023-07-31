@@ -31,18 +31,17 @@ _DIRENTRY_UTF8_WIDTH = 1
 # UTF-8 sequences to Micropython strings.
 # For file.read() without size, file.readline(), file.readlines() no buffer is allocated.
 # If the buffer is small, file.read(size) needs to concatenate many small strings
-# to get the result. If the buffer is too large, memory is wasted.  A good
-# size is the size of file.read(size) times four. A _decode_buffer_size > 400 bytes
-# does not improve much.
+# to get the result. If the buffer is too large, memory is wasted and
+# data can be read several times. 
 # A setting of zero adjusts buffer based on the file.read(size) parameter, but
 # the buffer is allocated once only.
-_decode_buffer_size = 0
-
+_decode_buffer_size = 256
 
 def set_decode_buffer_size( n ):
     global _decode_buffer_size
-    if 1 < n < 4:
-        n = 4 # Will fail if < 4
+    if 1 < n < 8:
+        _decode_buffer_size = 8 # must be > 4
+        return
     _decode_buffer_size = n
 
 def get_basename( filename ):
@@ -50,7 +49,9 @@ def get_basename( filename ):
 
 def get_folder( filename ):
     basename = get_basename( filename )
-    folder = filename[0:-len(basename)]
+    folder = filename[0:-len(basename)-1]
+    if folder == "":
+        folder = "/"
     return folder
    
 # Count "size" unicode characters in buffer and
@@ -84,21 +85,37 @@ def count_unicode_chars(buffer:ptr8, buffer_len:int, size:int ):
     
 class VfsFrozen:
     # see https://github.com/micropython/micropython/blob/master/tools/mpremote/mpremote/pyboardextended.py 
-    # for implmentation of a file system.
-    def __init__( self, *args ):
-        direntries, self.sum_size, self.files_folders = args
+    # for file system.
+    def __init__( self, direntries ):
         self.filedict = OrderedDict( direntries )
         self.path = "/"
     
     def _to_absolute_filename( self, filename ):
+        f = filename
         if not filename.startswith( "/" ) :
-            filename = self.path + filename
-        return filename.replace("//", "/")
-        
-    def _to_absolute_folder( self, filename ):
-        # Internal folder names always end with /
-        filename = self._to_absolute_filename( filename ) + "/"
-        return filename.replace( "//", "/")
+            filename = self.path + "/" + filename
+        if filename.endswith("/") and filename != "/":
+            filename = filename[0:-1]
+        filename = filename.replace("//", "/")
+
+        # Solve ".."
+        parts = filename.split("/")
+        i = -1
+        while ".." in parts:
+            i = parts.index("..")
+            if i > 1:
+                del parts[i]
+                del parts[i-1]
+            else:
+                # Can't access /..
+                raise OSError( errno.EPERM )
+        # Solve ./file or /folder/./file
+        while "." in parts:
+            i = parts.index(".")
+            del parts[i]
+        filename = "".join( "/" + p for p in parts )
+        filename = filename.replace("//", "/")
+        return filename
         
     def _find_file( self, filename ):
         filename = self._to_absolute_filename( filename )
@@ -131,7 +148,13 @@ class VfsFrozen:
             return StringIO_bytes( data, dir_entry[_DIRENTRY_UTF8_WIDTH])
         
     def chdir( self, path ):
-        self.path = self._to_absolute_folder( path )
+        newdir = self._to_absolute_filename( path )
+        direntry = self._find_file( newdir )
+        if direntry is None:
+            # It's a folder
+            self.path = newdir
+            return
+        raise OSError( -2 )
         
     def getcwd( self ):
         if self.path != "/" and self.path.endswith( "/" ):
@@ -139,9 +162,12 @@ class VfsFrozen:
         return self.path
         
     def ilistdir( self, path ):
-        path = self._to_absolute_folder( path )
+        abspath = self._to_absolute_filename( path ) 
+        # Test if folder exists, if not raise OSError ENOENT
+        self._find_file( abspath )
+        # Find all files
         for filename, dir_entry in self.filedict.items():
-            if get_folder( filename ) == path:
+            if get_folder( filename ) == abspath:
                 basename = get_basename( filename )
                 if dir_entry is not None:
                     yield ( basename, 0x8000, 0,  len( dir_entry[_DIRENTRY_DATA] ) )
@@ -166,7 +192,8 @@ class VfsFrozen:
         # No free space. One "inode" per file or folder. 
         # Mount flags: readonly
         # Max filename size 255 (checked in freeze2py)
-        return (1,1,self.sum_size,  0,0,self.files_folders,  0,0,1, 255)
+        sum_size = sum( len( d[_DIRENTRY_DATA] ) for d in self.filedict.values() if d is not None )
+        return (1,1,sum_size,  0,0,len( self.filedict ),  0,0,1, 255)
     
     def mount( self, readonly, x ):
         self.path = "/"
@@ -191,7 +218,7 @@ class StringIO_bytes():
         self.utf8_width = utf8_width
         # UTF-8 decode buffer: allocate as late as possible
         self.buffer = None
-        
+
     def __enter__( self ):
         return self
         
@@ -216,7 +243,7 @@ class StringIO_bytes():
             if _decode_buffer_size:
                 self.buffer = bytearray( _decode_buffer_size ) 
             else:
-                self.buffer = bytearray( min( size * 4, 400 ) )
+                self.buffer = bytearray( min( max( 8, size * 4), 400 ) )
         max_chars = len(self.buffer) // self.utf8_width
 
         result = ""    
@@ -235,7 +262,7 @@ class StringIO_bytes():
             # good for max_chars UTF-8 character sequences.
             origin = self.stream.tell()
             bytes_read = self.stream.readinto( self.buffer )
-            
+
             if bytes_read == 0:
                 break
 
@@ -244,6 +271,7 @@ class StringIO_bytes():
             # stops at in the midst of a character.
 
             bytes_used, chars = count_unicode_chars( self.buffer, bytes_read, min( max_chars, remainder ) )
+            
             # Now bytes_used and chars span the same data.
 
             # Reset the file pointer to point to the first unprocessed byte.
@@ -288,7 +316,10 @@ class BytesIO_readonly( BytesIO ):
     def write( *args ):
         # Not allowed, the file is opened readonly
         raise OSError( errno.EPERM )
-        
+    # Let BytesIO let do all the work.
+
+# Module level functions: mount_fs(), umount_fs() and deploy_fs()
+# These are called from the generated .py module.
 def _verbose_print( silent, function, *args ):
     if silent:
         return
@@ -302,21 +333,19 @@ def _file_exists( file ):
         return False
         
 # Implement functionality of the frozen files module.
-def mount_fs( direntries, mount_point, sum_size, files_folders, silent ):
+def mount_fs( direntries, mount_point, silent ):
     if _file_exists( mount_point ):
         raise OSError( errno.EEXIST )
         
-    fs = VfsFrozen( direntries, sum_size, files_folders )
-    os.mount( fs, mount_point )
+    fs = VfsFrozen( direntries )
+    os.mount( fs, mount_point, readonly=True )
     
     _verbose_print( silent, "mount", f"mounted filesystem at {mount_point}." )
-    return mount_point
 
 def umount_fs( mount_point, silent ):
     if mount_point:
         os.umount( mount_point )
         _verbose_print( silent, "umount", f"{mount_point} unmounted." )
-    return None
         
 def deploy_fs( direntries, target, silent ):
     # Test if target already exists, this means "already copied before".
@@ -345,8 +374,7 @@ def deploy_fs( direntries, target, silent ):
             pass
 
     # Don't mount the frozen file system,
-    # access file data through
-    # the internal file structure.
+    # access file data through the internal file structure.
     for filename, direntry in direntries:
         dest = target + filename
         if direntry:
@@ -359,7 +387,7 @@ def deploy_fs( direntries, target, silent ):
                 raise
             _verbose_print( silent, "deploy",  f"file {dest} copied." )
         else:
-            # Create folder
+            # Create folder (subfolders of the target folder)
             # Since the filelist is ordered by filename, parent folders
             # get created before their subfolders.
             try:
