@@ -7,8 +7,8 @@ import os
 import sys
 import time
 
-MAX_FILENAME_LEN = 255
 
+MAX_FILENAME_LEN = 255
 
 def get_max_utf8_bytes_char( s ):
     # Get length of longest UTF-8 sequence in s
@@ -35,19 +35,17 @@ def get_utf8_width( pc_filepath ):
         return get_max_utf8_bytes_char( s )
     except UnicodeError:
         # Probably this is a binary file (or a malformed UTF-8 file)
-        # If None were returned, a non-unicode file will generate
-        # a UnicodeError on open.
-        # As 4 is returned, file.open will succeed, but a later
+        # If None were returned, vfsfrozen would generate
+        # a UnicodeError on open with mode "r".
+        # As 4 is returned, file.open with mode "r" will succeed, but a later
         # read() will return UnicodeError. 4 means that 4 byte UTF-8
         # sequences may be expected.
         return 4
  
-def write_data(  pc_infolder, pc_outfile, target, on_import, silent ):
+def to_python(  pc_infolder, pc_outfile, target, on_import, silent ):
     files = []
-    # With Python 3.13 on we could use follow_symlinks=True on Windows
     # Add root
     var = 0
-    # Use glob, rglob does not follow symlinks
     for p in glob( "**", root_dir=pc_infolder, recursive=True ):
         pc_path = Path( p )
         # Make a list with variable name, filepath and the 
@@ -69,12 +67,14 @@ def files_to_python( files, pc_outfile, target, on_import ):
         number_of_files = 0
         number_of_folders = 0
         
+        # Generate one const for each file
         for pc_path, mp_path, var in files:            
             if pc_path.is_file():
                 file.write(f"# {mp_path}\n" ) 
                 pythonized = file_to_py( pc_path )
                 file.write(f"_f{var} = const(\n{pythonized})\n")
 
+        # Generate the directory entries
         file.write("_direntries = const((")
         for pc_path, mp_path, var in files:            
             if pc_path.is_file():
@@ -92,44 +92,44 @@ def files_to_python( files, pc_outfile, target, on_import ):
             file.write(f" ( '{mp_path}',  {direntry} ),\n" )
         file.write("))\n\n" )
 
+        file.write( "get_version = lambda : 1\n")
         t = time.localtime()        
-        file.write(f"DATE_FROZEN = const('{t[0]}/{t[1]:02d}/{t[2]:02d} {t[3]:02d}:{t[4]:02d}:{t[5]:02d}')\n")
-        file.write(f"last_mount_point = None\n" )
-        
-        file.write(f"def mount( mount_point='{target}' ):\n" )
-        nf = number_of_files+number_of_folders
+        file.write(f"get_date_frozen = lambda : '{t[0]}/{t[1]:02d}/{t[2]:02d} {t[3]:02d}:{t[4]:02d}:{t[5]:02d}'\n\n")
+       
+        # Generate the exposed mount(), umount() and deploy() functions.
+        file.write(f"def mount( mount_point='{target}', silent={silent}  ):\n" )
         file.write( "    from vfsfrozen import mount_fs\n" )
-        file.write( "    global last_mount_point\n" )
-        file.write(f"    last_mount_point = mount_fs( _direntries, mount_point, {sum_size}, {nf}, {silent})\n" )
-        file.write(f"def deploy( target='{target}'):\n" )
+        file.write(f"    mount_fs( _direntries, mount_point, silent )\n" )
+        file.write(f"def deploy( target='{target}', silent={silent} ):\n" )
         file.write( "    from vfsfrozen import deploy_fs\n" )
-        file.write(f"    deploy_fs( _direntries, target, {silent} )\n" )
-        file.write( "def umount():\n" )
+        file.write(f"    deploy_fs( _direntries, target, silent )\n" )
+        file.write(f"def umount( target='{target}', silent={silent} ):\n" )
         file.write( "    from vfsfrozen import umount_fs\n" )
-        file.write( "    global last_mount_point\n" )
-        file.write(f"    last_mount_point = umount_fs( last_mount_point, {silent} )\n" ) 
+        file.write(f"    umount_fs( target, silent )\n" ) 
+        
+        # Insert the "on_import" action
         if on_import == "mount":
             file.write( "mount()\n" )
         elif on_import == "deploy":
             file.write( "deploy()\n" )
-            
-        print(f"Sum of file sizes {sum_size} bytes, {number_of_files} files {number_of_folders} folders" ) 
+
+              
+    print(f"Sum of file sizes {sum_size} bytes, {number_of_files} files {number_of_folders} folders" ) 
 
 def file_to_py( pc_path ):
-    pythonized = ""
     size = pc_path.stat().st_size
     if size == 0:
-        return pythonized + "  b''"
+        return "  b''"
  
+    pythonized = ""
     with open( pc_path, "rb") as file:
         while True:
             chunk = file.read(16)
             if len(chunk) == 0:
                 break
             pythonized += f"  {str(chunk)}\\\n"
-        file.close()
     
-    # Last item without \ and \n
+    # Last item without \ nor \n
     return pythonized[0:-2]
   
 
@@ -139,6 +139,7 @@ The output file can be then frozen in a Micropython image together with
 vfsfrozen.py and mounted as a readonly file system.
 With the --on_import mount option, the file system will be mounted on import (this is the default).
 With the --on_import deploy option, the content will be copied to flash if the target folder is empty. If the target folder is not empty, no file is copied nor modified. The file system is not mounted.
+
 Examples:
 freezeFS.py input_folder frozenfolder.py
 freezeFS.py input_folder frozenfolder.py --target=/myfiles --on_import mount
@@ -190,7 +191,7 @@ if __name__ == "__main__":
 
     print(f'Writing Python file {pc_outfile}.')
     
-    if not write_data( pc_infolder, pc_outfile, target, on_import, silent ):
+    if not to_python( pc_infolder, pc_outfile, target, on_import, silent ):
         sys.exit(1)
 
     print(pc_outfile, 'written successfully.')
@@ -201,6 +202,3 @@ if __name__ == "__main__":
         print(f"On import the file system will be deployed (copied if empty) to {target}." )
     
   
-
-  
-
