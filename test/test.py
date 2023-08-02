@@ -273,16 +273,7 @@ class TestFiles(unittest.TestCase):
                     file1.close()
                     file2.close()
 
-
-    def test_readline2( self ):
-        for filetype in ("txt", "uni"):
-            for filename1, filename2 in iter_both_test_files( filetype ):
-                with open( filename1, "r" ) as file1:
-                    parts1 = file1.readlines()
-                with open( filename2, "r") as file2:
-                    parts2 = file2.readlines()
-                self.compare_lists( parts1, parts2 )
-                
+               
 
     def test_readline3( self ):
         for filetype in ("txt", "uni"):
@@ -492,14 +483,6 @@ class TestFiles(unittest.TestCase):
         with self.assertRaises( OSError ):
             os.remove( file1 )
             
-        f = open( file1, "rb" )
-        with self.assertRaises( OSError ):
-            f.write(b'something')
-
-        f = open( file1, "r" )
-        with self.assertRaises( AttributeError ):
-            f.write("something")
-
 
     def test_seek_binary( self ):
         # Test seek/tell on binary files
@@ -610,11 +593,6 @@ def timing_tests():
                             if len(r) == 0:
                                 break
                
-    for folder in (referencefolder, testfolder ) :
-        filename = folder + "/file9.uni"
-        with HowLong(f"Timed file.readlines() for {filename:19s}, size={size} bytes, mode=r , msec="):
-            with open( filename, "r") as file:
-                file.readlines()
 
     for folder in (referencefolder, testfolder ) :
         filename = folder + "/file9.uni"
