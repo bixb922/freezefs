@@ -10,6 +10,11 @@ When the generated Python file is imported, the file structure is mounted with o
 
 If the deploy option is used, the files and folders of the frozen files are copied to the standard flash file system.  This enables installing configuration and data files when booting the MicroPython image the first time.
 
+An important topic is that opening files in "r" mode requires to buffer the file in RAM. However, many libraries such as web servers and json support reading text modes in "rb" mode, and no overhead is incurred. 
+
+## Feedback
+Please leave feedback in the issues section. If it works for you, please star the repository.
+
 ## Installation
 The software is implemented in two files: freezeFS.py for the PC and vfsfrozen.py for the microcontroller.
 
@@ -254,7 +259,7 @@ The generated .py module exposes the following functions: ```mount()```, ```umou
 
 This is the module that implements the Virtual File System. You have to install it on your microcontroller by copying the vfsfrozen.py file to your root folder or the /lib folder, or better freeze via manifest.py to the MicroPython image.
 
-This module implements ```os.mount```, ```os.umount```, ```os.chdir```, ```os.getcwd```, ```os.ilistdir```, ```os.listdir```, ```os.stat```, ```open```, ```close```, ```read```, ```readinto```, ```readline```, ```readlines```, the iterator for reading lines and the decoding of UTF-8 format files to MicroPython strings.
+This module implements ```os.mount```, ```os.umount```, ```os.chdir```, ```os.getcwd```, ```os.ilistdir```, ```os.listdir```, ```os.stat```, ```open```, ```close```, ```read```, ```readinto```, ```readline```, the iterator for reading lines and the decoding of UTF-8 format files to MicroPython strings.
 
 ```statvfs``` returns block size of 1. The file system size is the sum of all file sizes, without overhead. Mode flag is 1 (read only). The maximum file length is set to 255.
 
@@ -271,11 +276,6 @@ the buffer to decode UTF-8 to MicroPython strings. You can use vfsfrozen.set_dec
 
 For files opened in "rb" mode, or files in "r"/"rt" mode with readline() or read()  operations, no decode buffer is necessary.
 
-
-## Restrictions
-Some operations such as json.load( file ) should be done with a open( filename, "rb" ) instead of "r". If not, a "OSError: stream operation not supported" may be raised.
-
-
 ## Unit tests
 
 The /test folder on github has unit tests. 
@@ -290,8 +290,6 @@ mpremote run test.py
 ```
 Running test.py on the PC will create and populate the testfiles folder. The files are frozen into frozenfiles.py. The tests compare behaviour of file operations of the freezeFS file system and the standard file system. 
 
-I ran these tests on a Raspberry Pi Pico, standard ESP32 and ESP32-S3 with PSRAM.
-
 ## Dependencies
 These standard MicroPython libraries are needed: os, io.BytesIO, collections.OrderedDict and errno. 
 
@@ -304,9 +302,6 @@ Version number 1.
 
 ## Compatibility
 Tested with MicroPython 1.20 and Python 3.10.7 and 3.11.4.
-
-## Feedback
-Please leave feedback in the issues section. If it works for you, please star the repository. That's my way to know if this software is in use.
 
 ## Copyright and license
 Source code and documentation Copyright (c) 2023 Hermann Paul von Borries.
