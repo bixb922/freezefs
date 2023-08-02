@@ -10,36 +10,15 @@ import time
 
 MAX_FILENAME_LEN = 255
 
-def get_max_utf8_bytes_char( s ):
-    # Get length of longest UTF-8 sequence in s
-    # This is used to allocate a buffer for file.read( size )
-    # when in text mode.
-    if len(s) == 0:
-        return 1
-    bits = max( ord(c).bit_length() for c in s )
-    if bits <= 7:
-        return 1
-    elif bits <= 11:
-        return 2
-    elif bits <= 16:
-        return 3
-    else:
-        return 4
-
-
-def get_utf8_width( pc_filepath ):       
+def is_unicode( pc_filepath ):       
     # Discover longest utf-8 sequence in the file (if UTf-8)
     try:
         with open( pc_filepath, "r", encoding="UTF-8") as file:
             s = file.read()
-        return get_max_utf8_bytes_char( s )
+        return True
     except UnicodeError:
-        # Probably this is a binary file (or a malformed UTF-8 file)
-        # If None were returned, vfsfrozen would generate
-        # a UnicodeError on open with mode "r".
-        # As 4 is returned, file.open with mode "r" will succeed, but a later
-        # read() will return UnicodeError. 4 means that 4 byte UTF-8
-        # sequences may be expected.
+        return False
+    except Exception as e:
         return None
  
 def to_python(  pc_infolder, pc_outfile, target, on_import, silent ):
@@ -54,7 +33,9 @@ def to_python(  pc_infolder, pc_outfile, target, on_import, silent ):
         mp_path = "/" + pc_path.as_posix()
         if len( mp_path ) > MAX_FILENAME_LEN:
             raise ValueError(f"File name longer than {MAX_FILENAME_LEN}: {mp_path} ")
-        fileinfo =  ( pc_infolder / pc_path, mp_path, var )
+        complete_pc_path = pc_infolder / pc_path
+        isuni = is_unicode( complete_pc_path )
+        fileinfo =  ( complete_pc_path, mp_path, var, isuni )
         files.append( fileinfo )
         var += 1
     files_to_python( files, pc_outfile, target, on_import )
@@ -68,22 +49,26 @@ def files_to_python( files, pc_outfile, target, on_import ):
         number_of_folders = 0
         
         # Generate one const for each file
-        for pc_path, mp_path, var in files:            
+        for pc_path, mp_path, var, isuni in files:   
+            print(f">>>{pc_path=} {isuni=}")
             if pc_path.is_file():
                 file.write(f"# {mp_path}\n" ) 
-                pythonized = file_to_py( pc_path )
+                if isuni:
+                    pythonized = file_to_py_unicode( pc_path )
+                else:
+                    pythonized = file_to_py( pc_path )
                 file.write(f"_f{var} = const(\n{pythonized})\n")
 
         # Generate the directory entries
         file.write("_direntries = const((")
-        for pc_path, mp_path, var in files:            
+        for pc_path, mp_path, var, isuni in files:            
             if pc_path.is_file():
-                uw = get_utf8_width( pc_path )
                 size = pc_path.stat().st_size
-                direntry = f"( _f{var}, {uw} )"
+                direntry = f"( _f{var}, {isuni}, {size} )"
                 sum_size += size 
                 number_of_files += 1
-                print(f"Appended file {pc_path}->{mp_path}, {size} bytes" )
+                print(f"Appended file {pc_path}->{mp_path}, {size} bytes "
+                      f"{'text' if isuni else 'binary'}")
             else:
                 direntry = "None"
                 size = 0
@@ -131,6 +116,29 @@ def file_to_py( pc_path ):
     
     # Last item without \ nor \n
     return pythonized[0:-2]
+
+def file_to_py_unicode( pc_path ):
+    size = pc_path.stat().st_size
+    if size == 0:
+        return "  ''"
+    
+    pythonized = ""
+    with open( pc_path, "r", encoding="UTF-8", newline="") as file:
+        while True:
+            chunk = file.read(16)
+            if len(chunk) == 0:
+                break
+            chunk = chunk.replace("\\", "\\\\")
+            chunk = chunk.replace("\n", "\\n")
+            chunk = chunk.replace("\r", "\\r")
+            chunk = chunk.replace("'", "\\'")
+            for i in range(32):
+                chunk = chunk.replace(chr(i),f"\\x{i:02x}")
+            pythonized += f"  '{chunk}'\\\n"
+    
+    # Last item without \ nor \n
+    return pythonized[0:-2]
+  
   
 
 DESC = """freezeFS.py
