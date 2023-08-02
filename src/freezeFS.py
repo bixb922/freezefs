@@ -40,7 +40,7 @@ def get_utf8_width( pc_filepath ):
         # As 4 is returned, file.open with mode "r" will succeed, but a later
         # read() will return UnicodeError. 4 means that 4 byte UTF-8
         # sequences may be expected.
-        return 4
+        return None
  
 def to_python(  pc_infolder, pc_outfile, target, on_import, silent ):
     files = []
