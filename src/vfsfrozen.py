@@ -11,15 +11,13 @@ from collections import OrderedDict
 #   For a folder:
 #       None
 #   For a file:
-#      ( data, utf-8 width )
-#      data is the file data (bytes data type)
-#      utf-8 width is 4 for binary files, 1 to 4 for UTF-8 files with
-#      the maximum length of a UTF-8 sequence for a character. This is used
-#      to optimize the use of the decode buffer.
+#      ( data, is unicode, original size in bytes )
+#
 
 # The root / is not stored in the filelist.
 _DIRENTRY_DATA = 0
-_DIRENTRY_UTF8_WIDTH = 1
+_DIRENTRY_TEXT = 1
+_DIRENTRY_SIZE = 2
 
 # The filelist is converted to filedict = OrderedDict( filelist ). The order
 # is relevant for ilistdir (no sort necessary) and for deploy (folders
@@ -95,13 +93,12 @@ class VfsFrozen:
             raise OSError(errno.EISDIR)
             
         data = dir_entry[_DIRENTRY_DATA] 
-        # Some applications open binary files in "r" mode and then
-        # use readinto.... If this is a non-utf-8 file, read as if mode "r"
-        if mode == "rb" or dir_entry[_DIRENTRY_UTF8_WIDTH] is None:
+        # data can be a str constant or a bytes constant.
+        # BytesIO and StringIO accept both.
+        if mode == "rb":
             return BytesIO( data )
         else:
-            # This has quite a overhead.
-            return StringIO( data.decode() )
+            return StringIO( data )
         
     def chdir( self, path ):
         newdir = self._to_absolute_filename( path )
@@ -126,7 +123,7 @@ class VfsFrozen:
             if get_folder( filename ) == abspath:
                 basename = get_basename( filename )
                 if dir_entry is not None:
-                    yield ( basename, 0x8000, 0,  len( dir_entry[_DIRENTRY_DATA] ) )
+                    yield ( basename, 0x8000, 0,  dir_entry[_DIRENTRY_SIZE] )
                 else:
                     yield ( basename, 0x4000, 0, 0 )
                                          
@@ -135,7 +132,7 @@ class VfsFrozen:
         if dir_entry is None:
             return (0x4000, 0,0,0,0,0, 0, 0,0,0)
         else:
-            return (0x8000, 0,0,0,0,0, len( dir_entry[_DIRENTRY_DATA] )  , 0,0,0)
+            return (0x8000, 0,0,0,0,0, dir_entry[_DIRENTRY_SIZE]  , 0,0,0)
         
     
     def statvfs( self, *args ):
@@ -148,7 +145,7 @@ class VfsFrozen:
         # No free space. One "inode" per file or folder. 
         # Mount flags: readonly
         # Max filename size 255 (checked in freeze2py)
-        sum_size = sum( len( d[_DIRENTRY_DATA] ) for d in self.filedict.values() if d is not None )
+        sum_size = sum( d[_DIRENTRY_SIZE] for d in self.filedict.values() if d is not None )
         return (1,1,sum_size,  0,0,len( self.filedict ),  0,0,1, 255)
     
     def mount( self, readonly, x ):
