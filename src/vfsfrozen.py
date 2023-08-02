@@ -26,24 +26,6 @@ _DIRENTRY_UTF8_WIDTH = 1
 # are created before the files are copied). 
 
 
-# A buffer is allocated for files opened in read mode when
-# a file.read(size) with size>0 is done. This buffer is used to decode
-# UTF-8 sequences to Micropython strings.
-# For file.read() without size, file.readline(), file.readlines() no buffer is allocated.
-# If the buffer is small, file.read(size) needs to concatenate many small strings
-# to get the result. If the buffer is too large, memory is wasted and
-# data can be read several times. 
-# A setting of zero adjusts buffer based on the file.read(size) parameter, but
-# the buffer is allocated once only.
-_decode_buffer_size = 256
-
-def set_decode_buffer_size( n ):
-    global _decode_buffer_size
-    if 1 < n < 8:
-        _decode_buffer_size = 8 # must be > 4
-        return
-    _decode_buffer_size = n
-
 def get_basename( filename ):
     return filename.split("/")[-1]
 
@@ -54,35 +36,6 @@ def get_folder( filename ):
         folder = "/"
     return folder
    
-# Count "size" unicode characters in buffer and
-# return how many UTF-8 bytes in the buffer that is
-# and how many unicode characters were found.  
-@micropython.viper
-def count_unicode_chars(buffer:ptr8, buffer_len:int, size:int ):
-
-    byte_pos = 0
-    chars = 0
-    while True:
-        c = buffer[byte_pos]
-        if   0b00000000 <= c <= 0b01111111: # ASCII
-            char_len = 1
-        elif 0b11000000 <= c <= 0b11011111: # Start of a 2 byte UTF-8 sequence
-            char_len = 2
-        elif 0b11100000 <= c <= 0b11101111: # Start of a 3 byte UTF-8 sequence
-            char_len = 3
-        elif 0b11110000 <= c <= 0b11110111: # Start of a 4 byte UTF-8 sequence
-            char_len = 4
-        else:
-            # Skipping by char_len should ensure we never see 
-            # a UTF-8 continuation character, except with a malformed UTF-8
-            # file.
-            raise UnicodeError
-        byte_pos += char_len
-        chars += 1
-        if chars >= size or byte_pos >= buffer_len:
-            break
-    return byte_pos, chars     
-    
 class VfsFrozen:
     # see https://github.com/micropython/micropython/blob/master/tools/mpremote/mpremote/pyboardextended.py 
     # for file system.
@@ -142,7 +95,9 @@ class VfsFrozen:
             raise OSError(errno.EISDIR)
             
         data = dir_entry[_DIRENTRY_DATA] 
-        if mode == "rb":
+        # Some applications open binary files in "r" mode and then
+        # use readinto.... If this is a non-utf-8 file, read as if mode "r"
+        if mode == "rb" or dir_entry[_DIRENTRY_UTF8_WIDTH] is None:
             return BytesIO( data )
         else:
             # This has quite a overhead.
