@@ -3,7 +3,7 @@
 
 import os
 import errno
-from io import BytesIO
+from io import BytesIO, StringIO
 from collections import OrderedDict
 
 # The filelist of the generated .py is a list of ( filename, direntry ) tuples.
@@ -143,9 +143,10 @@ class VfsFrozen:
             
         data = dir_entry[_DIRENTRY_DATA] 
         if mode == "rb":
-            return BytesIO_readonly( data )
+            return BytesIO( data )
         else:
-            return StringIO_bytes( data, dir_entry[_DIRENTRY_UTF8_WIDTH])
+            # This has quite a overhead.
+            return StringIO( data.decode() )
         
     def chdir( self, path ):
         newdir = self._to_absolute_filename( path )
@@ -211,112 +212,7 @@ class VfsFrozen:
         # No specific cleanup necessary on umount.
         pass
 
-class StringIO_bytes():
 
-    def __init__( self, data, utf8_width ):
-        self.stream = BytesIO( data )
-        self.utf8_width = utf8_width
-        # UTF-8 decode buffer: allocate as late as possible
-        self.buffer = None
-
-    def __enter__( self ):
-        return self
-        
-    def __exit__( self, exception_type, exception_value, traceback ):
-        self.close()
-        
-    def close( self ):
-        self.stream.close()
-        
-    @micropython.native
-    def read( self, size=-1 ):
-        # Read data and decode UTF-8 to Micropython string
-        if size < 0:
-            return self.stream.read().decode()
-
-        if size == 0:
-            return "" 
-            
-        # max_chars is the maximum unicode characters that can 
-        # fit into self.buffer.
-        if self.buffer is None:
-            if _decode_buffer_size:
-                self.buffer = bytearray( _decode_buffer_size ) 
-            else:
-                self.buffer = bytearray( min( max( 8, size * 4), 400 ) )
-        max_chars = len(self.buffer) // self.utf8_width
-
-        result = ""    
-        remainder = size  
- 
-        while remainder > 0: 
-            # Invariants: remainder is the remainder of unicode
-            # characters to be read.
-            # result is the accumulated decoded result.
-            # len(result) <= size
-            # self.stream.tell() always points to the start of a
-            # valid UTF-8 character sequence.
-            # origin is the start of the next UTF-8 character to be read
-            
-            # Read one bufferful of data.  The buffer size is
-            # good for max_chars UTF-8 character sequences.
-            origin = self.stream.tell()
-            bytes_read = self.stream.readinto( self.buffer )
-
-            if bytes_read == 0:
-                break
-
-            # Count unicode characters in the buffer. By limiting
-            # the count to max_chars, we ensure counting never
-            # stops at in the midst of a character.
-
-            bytes_used, chars = count_unicode_chars( self.buffer, bytes_read, min( max_chars, remainder ) )
-            
-            # Now bytes_used and chars span the same data.
-
-            # Reset the file pointer to point to the first unprocessed byte.
-            self.stream.seek( origin + bytes_used )
-            # At this point, the next byte of self.stream is always
-            # a start of unicode sequence (except for UnicodeError)
-
-            result += self.buffer[0:bytes_used].decode()
-            remainder -= chars
-
-        return result
-
-    def readline( self ):
-        return self.stream.readline().decode()     
-    
-    def readinto( self, buffer ):
-        # No decoding, readinto for text files reads bytes e.g. bytearray
-        return self.stream.readinto( buffer )
-        
-    def readlines( self ):
-        return [ _ for _ in self ]
-        
-    def __iter__( self ):
-        return self
-              
-    def __next__( self ):
-        line = self.readline()
-        if not line :
-            raise StopIteration
-        return line
-            
-    def seek( self, val, whence=0 ):
-        return self.stream.seek( val, whence )
-    
-    def tell( self ):
-        return self.stream.tell()
-    
-    def flush( self ):
-        pass
-       
-class BytesIO_readonly( BytesIO ):
-    def write( *args ):
-        # Not allowed, the file is opened readonly
-        raise OSError( errno.EPERM )
-    # Let BytesIO let do all the work.
 
 # Module level functions: mount_fs(), umount_fs() and deploy_fs()
 # These are called from the generated .py module.
