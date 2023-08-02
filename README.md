@@ -271,6 +271,11 @@ the buffer to decode UTF-8 to MicroPython strings. You can use vfsfrozen.set_dec
 
 For files opened in "rb" mode, or files in "r"/"rt" mode with readline() or read()  operations, no decode buffer is necessary.
 
+
+## Restrictions
+Some operations such as json.load( file ) should be done with a open( filename, "rb" ) instead of "r". If not, a "OSError: stream operation not supported" may be raised.
+
+
 ## Unit tests
 
 The /test folder on github has unit tests. 
