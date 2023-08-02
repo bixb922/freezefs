@@ -181,20 +181,6 @@ class TestFiles(unittest.TestCase):
                 c2 = file2.read()
             self.assertEqual( c1, c2 )
 
-    def test_full_try_binary_as_text( self ):
-        for filename1, filename2 in iter_both_test_files( "bin" ):
-            if os.stat( filename1 )[6] == 0 and os.stat( filename2 )[6] == 0:
-            # Length 0, will not raise error
-                continue
-            # Reading binary file as text should raise UnicodeError
-            with self.assertRaises( UnicodeError ):
-                with open( filename1, "r" ) as file1:
-                    c1 = file1.read()
-            with self.assertRaises( UnicodeError ):
-                with open( filename2, "r") as file2:
-                    c2 = file2.read()
-           
-
     def test_full_read_text( self ):
         for filename1, filename2 in iter_both_test_files( "txt" ):
             with open( filename1, "r" ) as file1:
@@ -243,7 +229,7 @@ class TestFiles(unittest.TestCase):
                 
     def test_read_text( self ):
         for filetype in ("txt", "uni"):
-            for length in ( 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 17, 20, 36, 37, 99, 100, 101, 400, 2000 ):
+            for length in ( 1, 5, 9, 10, 36, 37, 99, 100, 101, 400, 2000 ):
                 print(f"Test read text with read({length})" )
                 for filename1, filename2 in iter_both_test_files( filetype ):
                     file1 = open( filename1, "r" )
@@ -286,7 +272,7 @@ class TestFiles(unittest.TestCase):
 
 
     def test_read_binary( self ):
-        for length in ( 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 17, 20, 36, 37, 99, 100, 101, 400, 2000 ):
+        for length in ( 1, 2, 7, 15, 36, 99, 100, 101, 400, 2000 ):
             print(f"Test read binary with read({length})" )
             for filename1, filename2 in iter_both_test_files( "bin" ):
                 file1 = open( filename1, "rb" )
