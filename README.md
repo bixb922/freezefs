@@ -157,6 +157,21 @@ deploy does not mount the file system to do the file copy. However you can mount
 
 With ```--on_import=deploy target=/``` you can deploy files to the root of the file system. For example, you can deploy main.py this way.
 
+To free the memory used by loading the generated output module use the following instructions. If the generated output module is for example frozenfiles.py, then do:
+```
+import frozenfiles
+frozenfiles = None
+del sys.modules["frozenfiles"]
+```
+Another method can be:
+```
+__import__("frozenfiles")
+del sys.modules["frozenfiles"]
+```
+
+This will make the memory available for the next garbage collect.
+
+
 ## An example for deploy
 Suppose need several folders with files on the microcontroller:
 ```
