@@ -217,25 +217,26 @@ When frozen as bytecode in a MicroPython image, the RAM usage is very low while 
 
 Compressed .py files will use up to 2\*\*WBITS bytes of RAM while decompressing. The --wbits option can be used to set this value if RAM is low. The higher the WBITS value, the better the compression.
 
-When extracting a .py archive residing in the flash file system (or on SD card), the .py file is best compiled with mpy-cross to a .mpy to have the best gain in size. The complete file will be loaded to RAM. To get that memory back once the extract is done, use ```__import__("module-name")```. The extract driver will delete the module from the ```sys.modules[]``` list, so the next garbage collection will free the memory.
+When extracting a .py archive residing in the flash file system (or on SD card), the .py file is best compiled with mpy-cross to a .mpy to have the best gain in size. The complete file will be loaded to RAM. To get that memory back once the extract is done, use ```__import__("module-name")```, without assigning the result of ```__import__``` to a variable. The extract driver will delete the itself from the ```sys.modules[]``` list, so the next garbage collection will free the memory.
 
 
 ## Unit tests
 
-The /test folder on github has unit tests.
+The /tests folder on github has unit tests.
 
 
 ## Dependencies
+
 These standard MicroPython libraries are needed: sys, os, io.BytesIO, io.StringIO, collections.OrderedDict and errno.  If --compress is used, deflate is needed. Deflate is present in MicroPython 1.20 or later.
 
-Python 3.10 or later must be installed on the PC. Probably earlier versions of Python will work too.
+Python 3.10 or later must be installed on the PC. Probably earlier versions of Python will work too. pahtlib is used to be platform independent.
 
-The code is MicroPython/Python only. No C/C++ code. There are no processor or board specific dependencies.
+The code is MicroPython/Python only, no C/C++ code. There are no processor or board specific dependencies.
 
 #  Changes fron version 1 
 Version number 2. If you are using version 1, please regenerate the output .py files with the new version of freezefs as they are incompatible.
 
-Added --compress and --overwrite switches. Drivers for extracting and mounting are now included. freezefs is now pip installable.
+Added --compress and --overwrite switches. Drivers for extracting and mounting are now included in the compressed file, no need to install drivers. freezefs is now pip installable.
 
 ## Compatibility with MicroPython/Python versions
 Tested with MicroPython 1.20 and Python 3.10.7 and 3.11.4.
