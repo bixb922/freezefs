@@ -8,11 +8,10 @@ There are several ways to use freezefs:
 * Freeze the archive as frozen bytecode in a MicroPython image. Import the archive and it gets mounted as a read-only file system. The files continue to reside in the frozen image. 
 * Freeze the compressed archive as frozen bytecode in a MicroPython image. Import the archive once to extract the file structure to the flash file system. The purpose is to aid initial deployment of read/write files.
 * Run a compressed .py archive with ```mpremote run```. The files get extracted to the microprocessor. This is a easy way to install many files at once, and it is quite fast.
-* Install a compressed .py archive with ```mpremote mip install``` and then import the file to extract all files. This aids in installing complete systems over-the-air (OTA). The file should be compiled with mpy-cross.
+* Install a compressed .py archive with ```mpremote mip install``` and then import the file to extract all files. This aids in installing complete systems over-the-air (OTA). The file should be compiled with mpy-cross, to get all the gain from compression.
 
 Overall, it simplifies deploying text and binary files, such as MicroPython code, html pages, json data files, etc.
 
-[TOC]
 
 ## Description
 freezefs  is a utility program that runs on a PC and converts an arbitrary folder, subfolder and file structure into a Python source file. The files can be compressed. The generated Python file can then be frozen as bytecode into a MicroPython image, installed with mip on a microcontroller.
@@ -67,7 +66,7 @@ Use:
 python -m freezefs  myfolder frozen_myfolder.py --target=/myfolder --on-import=extract --compress
 ```
 
-The frozen_myfolder.py will now contain all the files and folders compressed with zlib, together with the code to extract the files to the flash file system at ```/```. Optionally compile with ```mpy-cross frozen_myfolder.py``` to reduce file size. Have your code ```import frozen_myfolder```. This will decompress and extract (copy) the complete folder and subfolders to flash memory. On the next import, the files normally won't be copied again (see ```--overwrite``` option).
+The frozen_myfolder.py will now contain all the files and folders compressed with zlib, together with the code to extract the files to the flash file system at ```/```. Optionally compile with ```mpy-cross frozen_myfolder.py``` to reduce file size. Have your code ```import frozen_myfolder```. This will decompress and extract (copy) the complete folder and subfolders to flash memory. On the next import, the files won't be overwritten (see ```--overwrite``` option).
 
 Importing or running the file, for example ```mpremote run frozen_myfolder``` will also extract all files. Since this is quite fast, this is aids deploying software.
 
@@ -83,19 +82,18 @@ You run this program on your PC to freeze a folder and its content (files and su
 
 
 ```python -m freezefs --help``` will show the command format and options.
-```
-usage: 
-       [-h] [--on-import {mount,extract}] [--target TARGET] [--overwrite {never,all}]
-       [--compress | --no-compress | -c] [--wbits WBITS] [--level LEVEL] [--silent]
-       infolder outfile
 
-freezefs
-Utility to convert a folder and its subfolders to a single Python source.
-The output file can be then frozen in a Micropython image and mounted as a
-read only file system or extracted to flash.
+```
+usage: python -m freezefs [-h] [--on-import {mount,extract}] [--target TARGET] [--overwrite {never,always}]
+                          [--compress | --no-compress | -c] [--wbits WBITS] [--level LEVEL] [--silent]
+                          infolder outfile
+
+freezefs.py
+freezefs saves a file structure with subfolders and builds an self-extractable or self-mountable archive in a .py file, optionally with compression, to be frozen as bytecode or extracted.
 
 Examples:
-python -m freezefs input_folder frozenfiles.py --target=/myfiles --on_import mount
+freezefs.py input_folder frozenfiles.py --target=/myfiles --on_import mount
+freezefs.py input_folder frozenfiles.py --target=/myfiles --on_import=extract --compress
 
 positional arguments:
   infolder              Input folder path
@@ -107,15 +105,15 @@ options:
                         Action when importing output module. Default is mount.
   --target TARGET, -t TARGET
                         For --on-import=mount: mount point. For --on-import=extract: destination folder.
-                        Must be specified for --on-import=mount and extract. Example: --target /myfiles.
-                        Must start with /
-  --overwrite {never,all}, -ov {never,all}
-                        All: on extract, all files are overwritten. Never: on extract, no file is
-                        overwritten, only new files are extracted.
+                        Example: --target /myfiles. Must start with /
+  --overwrite {never,always}, -ov {never,always}
+                        always: on extract, all files are overwritten. never: on extract, no file is
+                        overwritten, only new files are extracted. Default: never.
   --compress, --no-compress, -c
-                        Compress files before writing to output .py. See python zlib compression.
+                        Compress files before writing to output .py. See python zlib compression. (default:
+                        False)
   --wbits WBITS, -w WBITS
-                        Compression window of 2\*\*WBITS bytes. Between 9 and 14. Default is 10 (1024 bytes)
+                        Compression window of 2**WBITS bytes. Between 9 and 14. Default is 10 (1024 bytes)
   --level LEVEL, -l LEVEL
                         Compression level. Between 0 (no compression) and 9 (best compression). Default is 9
   --silent, -s          Supress messages printed when mounting/copying files and while running this program.
@@ -158,7 +156,7 @@ When extracting, each file that exists will be skipped. Only non-existing files 
 
 
 
-### --on-import=extract with --overwrite=all
+### --on-import=extract with --overwrite=always
 When extracting, existing files will be overwritten.
 
 

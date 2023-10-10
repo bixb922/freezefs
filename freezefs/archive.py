@@ -204,14 +204,13 @@ def main():
                         dest="target",
                         help="For --on-import=mount: mount point."
                              " For --on-import=extract: destination folder."
-                             " Must be specified for --on-import=mount and extract."
                              " Example: --target /myfiles. Must start with /")
                              
     parser.add_argument("--overwrite", "-ov", type=str,
                         dest="overwrite",
-                        choices=["never", "all"],
+                        choices=["never", "always"],
                         default="never",
-                        help="All: on extract, all files are overwritten. Never: on extract, no file is overwritten, only new files are extracted. ")
+                        help="always: on extract, all files are overwritten. never: on extract, no file is overwritten, only new files are extracted. Default: never. ")
                         
     # Compress parameters
     parser.add_argument("--compress", "-c",
