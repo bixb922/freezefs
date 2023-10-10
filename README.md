@@ -12,6 +12,8 @@ There are several ways to use freezefs:
 
 Overall, it simplifies deploying text and binary files, such as MicroPython code, html pages, json data files, etc.
 
+[TOC]
+
 ## Description
 freezefs.py  is a utility program that runs on a PC and converts an arbitrary folder, subfolder and file structure into a Python source file. The files can be compressed. The generated Python file can then be frozen as bytecode into a MicroPython image, installed with mip on a microcontroller.
 
@@ -51,7 +53,7 @@ The following command will archive the complete structure to the myfolder.py fil
 ```
 python -m freezefs.py  myfolder frozen_myfolder.py --target=/myfolder --on-import=mount
 ```
-The frozen_myfolder.py will now contain all the files and folders, together with the code to mount this as a readonly file system. To mount on the microcontroller, add this line to _boot.py, boot.py or main.py:
+The frozen_myfolder.py will now contain all the files and folders, together with the code to mount this as a read only file system. To mount on the microcontroller, add this line to _boot.py, boot.py or main.py:
 ```
 import frozen_myfolder
 ```
@@ -90,7 +92,7 @@ usage:
 freezefs.py
 Utility to convert a folder and its subfolders to a single Python source.
 The output file can be then frozen in a Micropython image and mounted as a
-readonly file system or extracted to flash.
+read only file system or extracted to flash.
 
 Examples:
 freezefs.py input_folder frozenfiles.py --target=/myfiles --on_import mount
@@ -113,7 +115,7 @@ options:
   --compress, --no-compress, -c
                         Compress files before writing to output .py. See python zlib compression.
   --wbits WBITS, -w WBITS
-                        Compression window of 2**WBITS bytes. Between 9 and 14. Default is 10 (1024 bytes)
+                        Compression window of 2\*\*WBITS bytes. Between 9 and 14. Default is 10 (1024 bytes)
   --level LEVEL, -l LEVEL
                         Compression level. Between 0 (no compression) and 9 (best compression). Default is 9
   --silent, -s          Supress messages printed when mounting/copying files and while running this program.
@@ -138,7 +140,7 @@ See below for --on-import with --compress.
 
 #### Using --on-import=mount with --compress has some restrictions
 
-It is possible to combine --on-import=mount with --compress and freeze as bytecode to a MicroPython image. The files are decompressed on the fly. Open in "rb" mode is very efficient. However open in "r" mode (open in text mode) uses up to 2**WBITS bytes to decompress the file (see -wbits option), and then the complete file is loaded to RAM on open, so this combination is only of use if enough RAM is available.
+It is possible to combine --on-import=mount with --compress and freeze as bytecode to a MicroPython image. The files are decompressed on the fly. Open in "rb" mode is very efficient. However open in "r" mode (open in text mode) and the complete file is loaded to RAM on after compressing, so this combination is only of use if enough RAM is available.
 
 If you import an output .py file that is not frozen in a MicroPython image but resides on the standard flash file system, the import loads the complete .py file system to RAM. This needs as much RAM as each file. Access is very fast, but a lot of RAM may be needed.
 
@@ -175,7 +177,8 @@ This option compresses the files when packing them into the output .py files and
 This option is best for use with --on-import=extract. It works with --on-import=mount, but the RAM usage is high when opening text files with "r" mode.
 
 ### freezefs.py --compress, --wbits and --level options
- --wbits indicates the number of bytes used at any time for compressing (called the window size). The size of the window is 2**WBITS, so --wbits=9 means windows size of 2**9=512 bytes and --wbits=14 means 2**14=16384 bytes. The higher the value, the better the compression, however, to decompress, up to 2**WBITS bytes may needed on the microcontroller. 
+
+ --wbits indicates the number of bytes used at any time for compressing (called the window size). The size of the window is 2\*\*WBITS, so --wbits=9 means windows size of 2**9=512 bytes and --wbits=14 means 2**14=16384 bytes. The higher the value, the better the compression, however, to decompress, up to 2**WBITS bytes may needed on the microcontroller. 
  
  --level goes from 0 (no compression) to 9 (highest compression). Level 9 is a bit slower to decompress.
  
@@ -183,7 +186,7 @@ This option is best for use with --on-import=extract. It works with --on-import=
  
 
 ### freezefs.py  --silent
-By default, mount and extractfunctions print the progress. If you want to suppress those messages, freeze the files with --silent.
+By default, mount and extract print the progress. If you want to suppress those messages, freeze the files with --silent.
 
 If an exception occurs during mount or extract, the exception will be raised independently of the --silent option.
 
@@ -231,7 +234,7 @@ The code is MicroPython/Python only. No C/C++ code. There are no processor or bo
 #  Changes fron version 1 
 Version number 2. If you are using version 1, please regenerate the output .py files with the new version of freezefs as they are incompatible.
 
-Addedd --compress and --overwrite switches. Drivers for extracting and mounting are now included. freezefs is now pip installable.
+Added --compress and --overwrite switches. Drivers for extracting and mounting are now included. freezefs is now pip installable.
 
 ## Compatibility with MicroPython/Python versions
 Tested with MicroPython 1.20 and Python 3.10.7 and 3.11.4.
