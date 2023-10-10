@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "freezefs"
-version = "2.1"
+version = "2.2"
 authors = [
   { name="Hermann von Borries", email="bixb922@gmail.com" }
 ]
