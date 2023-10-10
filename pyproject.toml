@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "freezefs"
+version = "2.1"
+authors = [
+  { name="Hermann von Borries", email="bixb922@gmail.com" }
+]
+description = "freezefs - Create self-mounting or self-extracting compressed archives for MicroPython"
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: Implementation :: MicroPython", 
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: MicroPython",
+    "Topic :: Desktop Environment :: File Managers"
+ ]
+
+[project.urls]
+"Homepage" = "https://github.com/bixb922/freezeFS"
+"Bug Tracker" = "https://github.com/bixb922/freezeFS/issues"
+"Blog" = "https://solazyasueto.blogspot.com"
+

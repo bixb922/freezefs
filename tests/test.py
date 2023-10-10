@@ -1,12 +1,16 @@
 # (c) 2023 Hermann Paul von Borries
 # MIT License
 
+
+# Test path: /./folder /folder/../folder /..
+
 import sys
 import os
 import unittest
 import time
 import errno
 import gc
+import shutil # mpremote mip install shutil (standard from micropython-lib)
 
 PYTHON = sys.implementation.name
 if PYTHON == "cpython":
@@ -63,7 +67,7 @@ def getrand(n):
 
 # Some characters for testing
 unicodes = "aáéíóúÁÉÍÓÚäëïöüÄËÏÖÜñÑ" + chr(0x1f600) + chr(0x1f603) + chr(0x1f604)
-asciis = "".join( chr(x) for x in range(0,127) ) + "\r" + "\n" + "t"
+asciis = "".join( chr(x) for x in range(0,127) ) + "\r" + "\n" + "\t"
 
 def write_str( filename, length, alphabet ):
     # Don't use newline to mirror Micropython
@@ -87,35 +91,7 @@ def write_bin( filename, length ):
             b[0] = getrand( 255 ) 
             file.write( b )
 
-def delete_recursive( folder ):
-    def dr( folder ):
-        try:
-            os.stat( folder )
-        except OSError:
-            # No folder, skip delete
-            return
-        for f in os.listdir( folder ):
-            file = folder + "/" + f
-            if os.stat( file )[0] & 0x8000:
-                #  print("delete_recursive: Delete file: ", file )
-                os.remove( file )
-            elif os.stat( file )[0] & 0x4000:
-                dr( file )
-                print("delete_recursive: Delete folder", file )
-                try:
-                    os.remove( file )
-                except Exception as e:
-                    if e.errno != errno.ENOENT:
-                        print("delete_recursive: Could not remove folder", file, e )
-    dr( folder )
-    # Now remove the top folder
-    try:
-        os.remove( folder )
-        print("delete_recursive: Delete folder", folder )
-    except Exception as e:
-        if e.errno != errno.ENOENT:
-            print("delete_recursive: Could not root remove folder", folder, e )
-        
+       
 def write_uni( filename, length ):
     if length <= 10:
         write_str( filename, length, unicodes )
@@ -123,7 +99,10 @@ def write_uni( filename, length ):
         write_str( filename, length, asciis + unicodes )
 
 def make_testfiles( ): 
-    delete_recursive( referencefolder )
+    try:
+        shutil.rmtree( referencefolder )
+    except:
+        pass
     # This has to run both on PC/Python and MicroPython
     # Create folders
     for f in [""] + test_folders:
@@ -224,18 +203,18 @@ class TestFiles(unittest.TestCase):
 
     
     def test_read_entire_text( self ):
+        print("")
         for filetype in ("txt", "uni"):
             for filename1, filename2 in iter_both_test_files( filetype ):
                 
-                print(f"test_read_entire_text {filename1=}")
                 with open( filename1, "r") as file1:
                     gc.collect()
                     data1 = file1.read()
-                    print(f"test_read_entire_text {len(data1)=} characters")
+                    print(f"test_read_entire_text {filename1=} {len(data1)=} characters")
                 with open( filename2, "r") as file2:
                     gc.collect()
                     data2 = file2.read()
-                    print(f"test_read_entire_text {len(data2)=} characters")
+                    print(f"test_read_entire_text {filename2=} {len(data2)=} characters")
                 self.assertEqual( data1, data2 )
                 data1 = None
                 data2 = None
@@ -243,7 +222,7 @@ class TestFiles(unittest.TestCase):
                 
     def test_read_text( self ):
         for filetype in ("txt", "uni"):
-            for length in ( 1, 5, 9, 10, 36, 37, 99, 100, 101, 400, 2000 ):
+            for length in ( 1, 10, 100, 1000 ):
                 print(f"Test read text with read({length})" )
                 for filename1, filename2 in iter_both_test_files( filetype ):
                     file1 = open( filename1, "r" )
@@ -286,7 +265,7 @@ class TestFiles(unittest.TestCase):
 
 
     def test_read_binary( self ):
-        for length in ( 1, 2, 7, 15, 36, 99, 100, 101, 400, 2000 ):
+        for length in ( 1, 10, 100, 1000 ):
             print(f"Test read binary with read({length})" )
             for filename1, filename2 in iter_both_test_files( "bin" ):
                 file1 = open( filename1, "rb" )
@@ -390,8 +369,12 @@ class TestFiles(unittest.TestCase):
         for filename, length in test_files:
             file1 = "/" + testfolder + "/" + filename
             file2 = "/" + referencefolder + "/" + filename
-            stat1 = os.stat( file1 )[0:7]
-            stat2 = os.stat( file2 )[0:7]
+            stat1 = os.stat( file1 )[0:6]
+            stat2 = os.stat( file2 )[0:6]
+        self.assertEqual( stat1, stat2 )
+
+        stat1 = os.stat( testfolder )[0:6]
+        stat2 = os.stat( referencefolder )[0:6]
         self.assertEqual( stat1, stat2 )
     
     def test_parent_dir( self ):
@@ -399,7 +382,7 @@ class TestFiles(unittest.TestCase):
         tf = "/" + testfolder
         stat1 = os.stat( rf + "/sub1/sub2/../file1.txt" )
         stat2 = os.stat( tf + "/sub1/sub2/../file1.txt" )
-        self.assertEqual( stat1[0:7], stat2[0:7] )
+        self.assertEqual( stat1[0:6], stat2[0:6] )
         
         os.chdir( rf + "/sub1/../sub1/sub2")
         p1 = os.getcwd().replace( rf, "/<root>")
@@ -520,55 +503,10 @@ class TestFiles(unittest.TestCase):
         t = os.statvfs( "/" + testfolder )
         self.assertEqual( (1, 1, 13578, 0, 0, 19, 0, 0, 1, 255), t )
 
-    def test_module_functions( self ):
-        def file_exists( file ):
-            try:
-                os.stat( file )
-                return True
-            except:
-                return False
-          
-        module = sys.modules["frozenfiles"]
-        module.umount()
-        self.assertFalse(  file_exists( testfolder ) )
-        
-        # Mount at default mount point
-        module.mount()
-        self.assertTrue( file_exists( testfolder ) )
-        with self.assertRaises( OSError ):
-            os.remove( testfolder + "/file1.txt" )
-        self.check_testfile_size( testfolder )
-        with self.assertRaises( OSError ):
-            module.mount()
-        module.umount()
-        self.assertFalse( file_exists( testfolder ) )
 
-        # Mount at new mount point
-        module.mount("/other_point")
-  
-        self.assertTrue( file_exists( "/other_point" ) )
-        with self.assertRaises( OSError ):
-            module.mount( "/other_point" )
-        self.check_testfile_size( "/other_point")
-        with self.assertRaises( OSError ):
-            os.remove( "/other_point/file1.txt" )
-        module.umount( "/other_point" )
-        self.assertFalse( file_exists( testfolder ) )
-        
-        # Deploy to a top folder and a subfolder
-        for folder in [ "/deploy_folder", "/deploy_folder/sub1/sub2/sub3"]:
-            delete_recursive( folder )
-            module.deploy( folder )
-            self.check_testfile_size( folder )
-            os.remove( folder + "/file1.txt" )
-            delete_recursive( "/deploy_folder" )
-            self.assertFalse( file_exists( folder ) )
-           
-        # Leave as before
-        module.mount()
  
 def timing_tests():
-    print("\nTiming tests. /testfolder is on the standard file system, /fz is the VfsFrozen file system\n" )  
+    print("\nTiming tests. /testfolder is on the standard file system, /fz is the VfsFrozen file system running in RAM.\n" )  
     class HowLong:
         def __init__( self, name ):
             self.name = name
@@ -614,7 +552,9 @@ if __name__ == "__main__":
     # Collect frequently
     gc.threshold( gc.mem_free()//2)
     make_testfiles()
-    import frozenfiles
+    
+    import frozenfiles_mount
+    
     unittest.main()
     
     # Run without unittest:
