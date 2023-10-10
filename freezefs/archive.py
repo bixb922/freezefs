@@ -1,5 +1,6 @@
 # (c) 2023 Hermann Paul von Borries
 # MIT License
+# freeze
 import argparse
 from pathlib import Path, PurePosixPath
 from glob import glob
@@ -258,7 +259,8 @@ def main():
         if args.target.endswith("/") and args.target != "/":
             quit( "Target must not end with /")
     else:
-        quit( "No target specified" )
+        mc_target = PurePosixPath( "/" + pc_infolder.stem )
+        print( f"Target set to {mc_target}" )
         
     if not ( 9 <= args.wbits <= 14 ):
         quit("--wbits must be between 9 and 14")
@@ -282,12 +284,12 @@ def main():
     module_name = pc_outfile.stem
 
     if args.on_import == "mount":
-        _verbose_print(f"On import the file system will be mounted at {args.target}." )
+        _verbose_print(f"On import the file system will be mounted at {mc_target}." )
     elif args.on_import == "extract":
         if args.overwrite == "never":
-            _verbose_print(f"On import the file system will be extracted to {args.target} writing only files that don't exist." )
+            _verbose_print(f"On import the file system will be extracted to {mc_target} writing only files that don't exist." )
         else:
-            _verbose_print(f"On import the file system will be extracted to {args.target} overwriting all files." )
+            _verbose_print(f"On import the file system will be extracted to {mc_target} overwriting all files." )
 
     if args.on_import == "mount" and args.compress:
         # This is the only combination that is heavy in RAM use.

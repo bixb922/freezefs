@@ -15,7 +15,7 @@ Overall, it simplifies deploying text and binary files, such as MicroPython code
 [TOC]
 
 ## Description
-freezefs.py  is a utility program that runs on a PC and converts an arbitrary folder, subfolder and file structure into a Python source file. The files can be compressed. The generated Python file can then be frozen as bytecode into a MicroPython image, installed with mip on a microcontroller.
+freezefs  is a utility program that runs on a PC and converts an arbitrary folder, subfolder and file structure into a Python source file. The files can be compressed. The generated Python file can then be frozen as bytecode into a MicroPython image, installed with mip on a microcontroller.
 
 The archive file can be either mounted as a Virtual File System or extracted. 
 
@@ -51,7 +51,7 @@ myfolder
 ```
 The following command will archive the complete structure to the myfolder.py file:
 ```
-python -m freezefs.py  myfolder frozen_myfolder.py --target=/myfolder --on-import=mount
+python -m freezefs  myfolder frozen_myfolder.py --target=/myfolder --on-import=mount
 ```
 The frozen_myfolder.py will now contain all the files and folders, together with the code to mount this as a read only file system. To mount on the microcontroller, add this line to _boot.py, boot.py or main.py:
 ```
@@ -59,15 +59,15 @@ import frozen_myfolder
 ```
 
 
-When booting up the microcontroller, and once ```import frozen_myfolder``` has been executed, the above file structure is automatically mounted (using ```os.mount()``` internally) at /myfolder, and the files and folders will appear under /myfolder on the microcontroller as read only files. The files are not copied to /myfolder, but remain in the MicroPython image on flash. They now can be accessed with MicroPython statements such as open( "/myfolder/index.html", "r"), read(), readline(), open in "rb" or "r" mode, os.listdir("/myfolder") etc. If the import is in boot.py or _boot.py, the files are also visible with mpremote ls. The RAM overhead is minimal, and access speed is similar to regular flash files.
+When booting up the microcontroller, and once ```import frozen_myfolder``` has been executed, the above file structure is automatically mounted (using ```os.mount()``` internally) at /myfolder, and the files and folders will appear under ```/myfolder``` on the microcontroller as read only files. The files are not copied to ```/myfolder```, but remain in the MicroPython image on flash. They now can be accessed with MicroPython statements such as ```open( "/myfolder/index.html", "r"), read(), readline(), open in "rb" or "r" mode, os.listdir("/myfolder")``` etc. If the import is in ```boot.py``` or ```_boot.py```, the files are also visible with ```mpremote ls```. The RAM overhead is low, and access speed is similar to regular flash files.
 
 ## Another example: create a self-extractable file archive
 Use:
 ```
-python -m freezefs.py  myfolder frozen_myfolder.py --target=/myfolder --on-import=extract --compress
+python -m freezefs  myfolder frozen_myfolder.py --target=/myfolder --on-import=extract --compress
 ```
 
-The frozen_myfolder.py will now contain all the files and folders compressed with zlib, together with the code to extract the files to the flash file system at /myfolder. Optionally compile with ```mpy-cross frozen_myfolder.py``` to reduce file size. Have your code ```import frozen_myfolder```. This will decompress and extract (copy) the complete folder and subfolders to flash memory. On the next import, the files normally won't be copied again (see --overwrite option).
+The frozen_myfolder.py will now contain all the files and folders compressed with zlib, together with the code to extract the files to the flash file system at ```/```. Optionally compile with ```mpy-cross frozen_myfolder.py``` to reduce file size. Have your code ```import frozen_myfolder```. This will decompress and extract (copy) the complete folder and subfolders to flash memory. On the next import, the files normally won't be copied again (see ```--overwrite``` option).
 
 Importing or running the file, for example ```mpremote run frozen_myfolder``` will also extract all files. Since this is quite fast, this is aids deploying software.
 
@@ -77,7 +77,7 @@ __import__("frozen_myfolder")
 ```
 This will free the used RAM memory of the import on the next garbage collection. 
 
-## freezefs.py utility
+## freezefs utility
 
 You run this program on your PC to freeze a folder and its content (files and subfolders) to a .py file. 
 
@@ -89,13 +89,13 @@ usage:
        [--compress | --no-compress | -c] [--wbits WBITS] [--level LEVEL] [--silent]
        infolder outfile
 
-freezefs.py
+freezefs
 Utility to convert a folder and its subfolders to a single Python source.
 The output file can be then frozen in a Micropython image and mounted as a
 read only file system or extracted to flash.
 
 Examples:
-freezefs.py input_folder frozenfiles.py --target=/myfiles --on_import mount
+python -m freezefs input_folder frozenfiles.py --target=/myfiles --on_import mount
 
 positional arguments:
   infolder              Input folder path
@@ -128,7 +128,7 @@ The input folder and subfolders contain the files to be archived in the output .
 The outfile is overwritten with the MicroPython code with file contents (possibly compressed), file and folder names and the code to os.mount() or extract the files.
 
 
-### freezefs.py with --on-import mount (default)
+### freezefs with --on-import mount (default)
 
 With this option, the output .py module mounts its file system on import at the mount point (virtual folder) specified by --target as read-only files. 
 
@@ -144,7 +144,7 @@ It is possible to combine --on-import=mount with --compress and freeze as byteco
 
 If you import an output .py file that is not frozen in a MicroPython image but resides on the standard flash file system, the import loads the complete .py file system to RAM. This needs as much RAM as each file. Access is very fast, but a lot of RAM may be needed.
 
-### freezefs.py with --on-import=extract
+### freezefs with --on-import=extract
 This option is intended for use with --compress to deploy files to the regular flash file system.
 
 When importing or running this .py file on a MicroPython system, the file system gets decompressed and extracted.
@@ -162,40 +162,39 @@ When extracting, each file that exists will be skipped. Only non-existing files 
 When extracting, existing files will be overwritten.
 
 
-### freezefs.py  --target
+### freezefs  --target
 For ```--on-import=mount``` this is the mount point on the file system of the microcontroller.
 
 For ```--on-import=export```, this is the destination folder on the file system of the microcontroller.
 
 Must start with /, i.e. must be a root folder. ```--target=/myfolder/subfolder```  is a valid target.
 
-For --on-import=extract, this can be --target=/ to deploy files to the root folder, such as main.py.
+For ```--on-import=extract```, this can be ```--target=/``` to deploy files to the root folder, such as main.py.
 
-### freezefs.py --compress
+If omitted, the last subfolder of the infolder is set as target, for example if the infolder is ```/myfolder/subfolder```, target will be set to ```/subfolder```.
+
+### freezefs --compress
 This option compresses the files when packing them into the output .py files and decompresses them using deflate on the microcontroller.
 
-This option is best for use with --on-import=extract. It works with --on-import=mount, but the RAM usage is high when opening text files with "r" mode.
+This option is best for use with --on-import=extract. It works with ```--on-import=mount```, but the RAM usage is high when opening text files with "r" mode.
 
-### freezefs.py --compress, --wbits and --level options
+### freezefs --compress, --wbits and --level options
 
- --wbits indicates the number of bytes used at any time for compressing (called the window size). The size of the window is 2\*\*WBITS, so --wbits=9 means windows size of 2**9=512 bytes and --wbits=14 means 2**14=16384 bytes. The higher the value, the better the compression, however, to decompress, up to 2**WBITS bytes may needed on the microcontroller. 
+ --wbits indicates the number of bytes used at any time for compressing (called the window size). The size of the window is 2\*\*WBITS, so --wbits=9 means windows size of 2\*\*9=512 bytes and --wbits=14 means 2\*\*14=16384 bytes. The higher the value, the better the compression, however, to decompress, up to 2\*\*WBITS bytes may needed on the microcontroller. 
  
  --level goes from 0 (no compression) to 9 (highest compression). Level 9 is a bit slower to decompress.
  
  See Python docs for zlib and MicroPython docs for deflate for more details. 
  
 
-### freezefs.py  --silent
+### freezefs  --silent
 By default, mount and extract print the progress. If you want to suppress those messages, freeze the files with --silent.
 
 If an exception occurs during mount or extract, the exception will be raised independently of the --silent option.
 
-### Call freezefs.py from another Python program
-Import freezefs.py. The to_python() function in freezefs can be called from Python to freeze files.
-
 ## The frozen .py output file
 
-The output file of the freezefs.py  utility is a module with the frozen file system. This generated module contains consts with all the file data. MicroPython will access the file data directly in flash, if the .py file is frozen as bytecode in a MicroPython image. 
+The output file of the freezefs  utility is a module with the frozen file system. This generated module contains consts with all the file data. MicroPython will access the file data directly in flash, if the .py file is frozen as bytecode in a MicroPython image. 
 
 The code for extract or mount is included in the file. When compiled to .mpy files, this code is about 1800 bytes for mount or 1300 bytes for extract.
 
@@ -216,7 +215,7 @@ The VFS implements ```os.mount```, ```os.umount```, ```os.chdir```, ```os.getcwd
 
 ```ilistdir``` will show file type (0x4000 for folders, 0x8000 for files as usual) and file size. Unused fields returned by ilistdir are set to zero.
 
-If --compress was used, the files are decompressed on open. read(), readinto(), readline(), readlines() are available. However, seek() and tell() are not available. open(file,"rb") uses very little RAM. open(file,"r") will buffer the complete file in RAM.
+If ```--compress``` was used, the files are decompressed on open. ```read()```, ```readinto()```, ```readline()```, ```readlines()``` are available. However, ```seek()``` and ```tell()``` are not available. ```open(file,"rb")``` uses very little RAM. open(file,"r") will buffer the complete file in RAM.
 
 
 ## Unit tests
