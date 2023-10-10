@@ -70,11 +70,6 @@ The frozen_myfolder.py will now contain all the files and folders compressed wit
 
 Importing or running the file, for example ```mpremote run frozen_myfolder``` will also extract all files. Since this is quite fast, this is aids deploying software.
 
-If you import a self-extracting archive, you should use:
-```
-__import__("frozen_myfolder")
-```
-This will free the used RAM memory of the import on the next garbage collection. 
 
 ## freezefs utility
 
@@ -132,15 +127,8 @@ With this option, the output .py module mounts its file system on import at the 
 
 The purpose --on-import=mount option to enable mounting a file system frozen in bytecode in a MicroPython image. So the best use for this option is to put the .py output file or files into a manifest.py, generate the MicroPython image and load the image to a microcontroller. Add a import of the output .py file in the main.py or boot.py (or _boot.py) and the files get visible read only at the specified target.
 
- The files frozen in the MicroPython image use very little RAM overhead. The files read from flash. Only a file directory is loaded in RAM for lookup of files.
+See section on RAM usage below for --on-import with --compress.
 
-See below for --on-import with --compress.
-
-#### Using --on-import=mount with --compress has some restrictions
-
-It is possible to combine --on-import=mount with --compress and freeze as bytecode to a MicroPython image. The files are decompressed on the fly. Open in "rb" mode is very efficient. However open in "r" mode (open in text mode) and the complete file is loaded to RAM on after compressing, so this combination is only of use if enough RAM is available.
-
-If you import an output .py file that is not frozen in a MicroPython image but resides on the standard flash file system, the import loads the complete .py file system to RAM. This needs as much RAM as each file. Access is very fast, but a lot of RAM may be needed.
 
 ### freezefs with --on-import=extract
 This option is intended for use with --compress to deploy files to the regular flash file system.
@@ -152,12 +140,12 @@ Also see --overwrite option.
 With the --on-import=extract option, the folder is not mounted but copied to the file system at
 
 ### --on-import=extract with --overwrite=never
-When extracting, each file that exists will be skipped. Only non-existing files will be extracted.
+When extracting, each file that exists will be skipped. Only non-existing files will be extracted. Existing files will be never overwritten.
 
 
 
 ### --on-import=extract with --overwrite=always
-When extracting, existing files will be overwritten.
+When extracting, existing files will be always overwritten.
 
 
 ### freezefs  --target
@@ -174,7 +162,7 @@ If omitted, the last subfolder of the infolder is set as target, for example if 
 ### freezefs --compress
 This option compresses the files when packing them into the output .py files and decompresses them using deflate on the microcontroller.
 
-This option is best for use with --on-import=extract. It works with ```--on-import=mount```, but the RAM usage is high when opening text files with "r" mode.
+This option is best for use with --on-import=extract. It works with ```--on-import=mount```, but the RAM usage is high when opening text files with "r" mode. See section on RAM usage below.
 
 ### freezefs --compress, --wbits and --level options
 
@@ -213,7 +201,23 @@ The VFS implements ```os.mount```, ```os.umount```, ```os.chdir```, ```os.getcwd
 
 ```ilistdir``` will show file type (0x4000 for folders, 0x8000 for files as usual) and file size. Unused fields returned by ilistdir are set to zero.
 
-If ```--compress``` was used, the files are decompressed on open. ```read()```, ```readinto()```, ```readline()```, ```readlines()``` are available. However, ```seek()``` and ```tell()``` are not available. ```open(file,"rb")``` uses very little RAM. open(file,"r") will buffer the complete file in RAM.
+If ```--compress``` was used, the files are decompressed on open while reading the stream. ```read()```, ```readinto()```, ```readline()```, ```readlines()``` are available. However, ```seek()``` and ```tell()``` are not available for compress. See also RAM usage below.
+
+## RAM usage for --on-import=mount
+
+When frozen as bytecode in a MicroPython image, the RAM usage is low, about 1 kbyte.
+
+When using the --compress option, files opened with "r" (text mode) have to be decompressed in RAM, and the complete file gets loaded to RAM. This does not affect files opened with "rb" mode (binary mode), RAM usage is similar to opening a regular file system file.
+
+When the .py file resides in the flash file system (as opposed to being frozen in the MicroPython image) the complete file is read to RAM, and it's now essentially a read only RAM disk. 
+
+## RAM usage for --on-import=extract
+
+When frozen as bytecode in a MicroPython image, the RAM usage is very low while extracting. The buffer size to read/write is set at 256 bytes. 
+
+Compressed .py files will use up to 2\*\*WBITS bytes of RAM while decompressing. The --wbits option can be used to set this value if RAM is low. The higher the WBITS value, the better the compression.
+
+When extracting a .py archive residing in the flash file system (or on SD card), the .py file is best compiled with mpy-cross to a .mpy to have the best gain in size. The complete file will be loaded to RAM. To get that memory back once the extract is done, use ```__import__("module-name")```. The extract driver will delete the module from the ```sys.modules[]``` list, so the next garbage collection will free the memory.
 
 
 ## Unit tests
