@@ -1,3 +1,4 @@
+#!/bin/sh
 mpremote rm frozenfiles_mount.mpy
 mpremote run "import shutil;shutil.rmtree('testfiles')"
 del frozenfiles_mount.py
