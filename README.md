@@ -29,6 +29,7 @@ Please report any problem or ask for support in the issues section. If it works 
 
 Install the software with ```pip install freezefs```
 
+This installs the freezefs utility to be run on PC or MAC. The necessary MicroPython code is also installed on the PC or MAC and then automatically included in the output file.
 
 ## An example: freeze a files to a MicroPython image and mount file system
 Suppose you have the following folders, files and subfolders on your PC and want to freeze that together with your MicroPython programs in a MicroPython image:
@@ -52,13 +53,12 @@ The following command will archive the complete structure to the myfolder.py fil
 ```
 python -m freezefs  myfolder frozen_myfolder.py --target=/myfolder --on-import=mount
 ```
-The frozen_myfolder.py will now contain all the files and folders, together with the code to mount this as a read only file system. To mount on the microcontroller, add this line to _boot.py, boot.py or main.py:
+The frozen_myfolder.py will now contain all the files and folders, together with the code to mount this as a read only file system. To mount on the microcontroller, add this line to  boot.py or main.py:
 ```
 import frozen_myfolder
 ```
 
-
-When booting up the microcontroller, and once ```import frozen_myfolder``` has been executed, the above file structure is automatically mounted (using ```os.mount()``` internally) at /myfolder, and the files and folders will appear under ```/myfolder``` on the microcontroller as read only files. The files are not copied to ```/myfolder```, but remain in the MicroPython image on flash. They now can be accessed with MicroPython statements such as ```open( "/myfolder/index.html", "r"), read(), readline(), open in "rb" or "r" mode, os.listdir("/myfolder")``` etc. If the import is in ```boot.py``` or ```_boot.py```, the files are also visible with ```mpremote ls```. The RAM overhead is low, and access speed is similar to regular flash files.
+When booting up the microcontroller, and once ```import frozen_myfolder``` has been executed, the above file structure is mounted (using ```os.mount()``` internally) at /myfolder, and the files and folders will appear under ```/myfolder``` on the microcontroller as read only files. The files are not copied to ```/myfolder```, but remain in the MicroPython image on flash. They now can be accessed with MicroPython statements such as ```open( "/myfolder/index.html", "r"), read(), readline(), open in "rb" or "r" mode, os.listdir("/myfolder")``` etc.  lsIf the import is in ```boot.py```, the files are also visible with ```mpremote ls```. The RAM overhead is low, and access speed is similar to regular flash files.
 
 ## Another example: create a self-extractable file archive
 Use:
@@ -118,26 +118,26 @@ The input folder and subfolders contain the files to be archived in the output .
 
 
 ### The output .py file
-The outfile is overwritten with the MicroPython code with file contents (possibly compressed), file and folder names and the code to os.mount() or extract the files.
+The outfile is overwritten with the MicroPython code with file contents (possibly compressed), file and folder names and the code to mount the archive as file system or extract the files.
 
 
-### freezefs with --on-import mount (default)
+### freezefs with --on-import mount 
 
 With this option, the output .py module mounts its file system on import at the mount point (virtual folder) specified by --target as read-only files. 
 
-The purpose --on-import=mount option to enable mounting a file system frozen in bytecode in a MicroPython image. So the best use for this option is to put the .py output file or files into a manifest.py, generate the MicroPython image and load the image to a microcontroller. Add a import of the output .py file in the main.py or boot.py (or _boot.py) and the files get visible read only at the specified target.
+The purpose --on-import=mount option to enable mounting a file system frozen in bytecode in a MicroPython image. So the best use for this option is to put the .py output file or files into a manifest.py, generate the MicroPython image and load the image to a microcontroller. Add a import of the output .py file in the main.py or boot.py and the files get visible read only at the specified target.
 
 See section on RAM usage below for --on-import with --compress.
 
 
 ### freezefs with --on-import=extract
-This option is intended for use with --compress to deploy files to the regular flash file system.
+This option is intended for use with --compress to makme a self extractable .py file.
+
+To obtain maximum gain from compression, compile the .py with mpy-cross to a .mpy file.
 
 When importing or running this .py file on a MicroPython system, the file system gets decompressed and extracted.
 
 Also see --overwrite option.
-
-With the --on-import=extract option, the folder is not mounted but copied to the file system at
 
 ### --on-import=extract with --overwrite=never
 When extracting, each file that exists will be skipped. Only non-existing files will be extracted. Existing files will be never overwritten.
@@ -153,20 +153,20 @@ For ```--on-import=mount``` this is the mount point on the file system of the mi
 
 For ```--on-import=export```, this is the destination folder on the file system of the microcontroller.
 
-Must start with /, i.e. must be a root folder. ```--target=/myfolder/subfolder```  is a valid target.
+Must start with /
 
-For ```--on-import=extract```, this can be ```--target=/``` to deploy files to the root folder, such as main.py.
+For ```--on-import=extract```, ```--target=/``` is used to deploy files to the root folder, such as main.py.
 
 If omitted, the last subfolder of the infolder is set as target, for example if the infolder is ```/myfolder/subfolder```, target will be set to ```/subfolder```.
 
 ### freezefs --compress
-This option compresses the files when packing them into the output .py files and decompresses them using deflate on the microcontroller.
+This option compresses the files when packing them into the output .py files and decompresses them using MicroPytnon ```deflate``` on the microcontroller.
 
 This option is best for use with --on-import=extract. It works with ```--on-import=mount```, but the RAM usage is high when opening text files with "r" mode. See section on RAM usage below.
 
 ### freezefs --compress, --wbits and --level options
 
- --wbits indicates the number of bytes used at any time for compressing (called the window size). The size of the window is 2\*\*WBITS, so --wbits=9 means windows size of 2\*\*9=512 bytes and --wbits=14 means 2\*\*14=16384 bytes. The higher the value, the better the compression, however, to decompress, up to 2\*\*WBITS bytes may needed on the microcontroller. 
+ --wbits indicates the number of bytes used at any time for compressing (called the window size). The size of the window is 2\*\*WBITS, so --wbits=9 means windows size of 2\*\*9=512 bytes and --wbits=14 means 2\*\*14=16384 bytes. The higher the value, the better the compression. However, to decompress, up to 2\*\*WBITS bytes may needed on the microcontroller. 
  
  --level goes from 0 (no compression) to 9 (highest compression). Level 9 is a bit slower to decompress.
  
@@ -182,12 +182,12 @@ If an exception occurs during mount or extract, the exception will be raised ind
 
 The output file of the freezefs  utility is a module with the frozen file system. This generated module contains consts with all the file data. MicroPython will access the file data directly in flash, if the .py file is frozen as bytecode in a MicroPython image. 
 
-The code for extract or mount is included in the file. When compiled to .mpy files, this code is about 1800 bytes for mount or 1300 bytes for extract.
+The code for extract or mount is included in the file. When compiled to .mpy files, the additional code amounts to about 1800 bytes for mount and 1300 bytes for extract.
 
 
 ### The mounted virtual file system
 
-freezefs implements a Virtual File System (VFS), included in the output file when using --on-import=mount
+freezefs implements a Virtual File System (VFS), with the driver included in the output file when using --on-import=mount
 
 The VFS implements ```os.mount```, ```os.umount```, ```os.chdir```, ```os.getcwd```, ```os.ilistdir```, ```os.listdir```, ```os.stat```, ```open```, ```close```, ```read```, ```readinto```, ```readline```, the iterator for reading lines and the decoding of UTF-8 format files to MicroPython strings.
 
@@ -207,7 +207,7 @@ If ```--compress``` was used, the files are decompressed on open while reading t
 
 When frozen as bytecode in a MicroPython image, the RAM usage is low, about 1 kbyte.
 
-When using the --compress option, files opened with "r" (text mode) have to be decompressed in RAM, and the complete file gets loaded to RAM. This does not affect files opened with "rb" mode (binary mode), RAM usage is similar to opening a regular file system file.
+```---on-import=mount``` with ```--compress``` is  RAM intensive on the microcontroller. Files opened with "r" (text mode) have to be decompressed in RAM, and the complete file gets loaded to RAM. This does not affect files opened with "rb" mode (binary mode), RAM usage is similar to opening a regular file system file.
 
 When the .py file resides in the flash file system (as opposed to being frozen in the MicroPython image) the complete file is read to RAM, and it's now essentially a read only RAM disk. 
 
@@ -217,7 +217,7 @@ When frozen as bytecode in a MicroPython image, the RAM usage is very low while 
 
 Compressed .py files will use up to 2\*\*WBITS bytes of RAM while decompressing. The --wbits option can be used to set this value if RAM is low. The higher the WBITS value, the better the compression.
 
-When extracting a .py archive residing in the flash file system (or on SD card), the .py file is best compiled with mpy-cross to a .mpy to have the best gain in size. The complete file will be loaded to RAM. To get that memory back once the extract is done, use ```__import__("module-name")```, without assigning the result of ```__import__``` to a variable. The extract driver will delete the itself from the ```sys.modules[]``` list, so the next garbage collection will free the memory.
+When extracting a .py archive residing in the flash file system (or on SD card), the .py file is best compiled with mpy-cross to a .mpy to have the best gain in size. The complete .py (or .mpy) file will be loaded to RAM. To get that memory back once the extract is done, use ```__import__("module-name")```, without assigning the result of ```__import__``` to a variable. The extract driver will delete the itself from the ```sys.modules[]``` list, so the next garbage collection will free the memory.
 
 
 ## Unit tests
@@ -233,7 +233,7 @@ Python 3.10 or later must be installed on the PC. Probably earlier versions of P
 
 The code is MicroPython/Python only, no C/C++ code. There are no processor or board specific dependencies.
 
-#  Changes fron version 1 
+#  Changes since version 1 
 Version number 2. If you are using version 1, please regenerate the output .py files with the new version of freezefs as they are incompatible.
 
 Added --compress and --overwrite switches. Drivers for extracting and mounting are now included in the compressed file, no need to install drivers. freezefs is now pip installable.

@@ -27,7 +27,7 @@ classifiers = [
  ]
 
 [project.urls]
-"Homepage" = "https://github.com/bixb922/freezeFS"
-"Bug Tracker" = "https://github.com/bixb922/freezeFS/issues"
+"Homepage" = "https://github.com/bixb922/freezefs"
+"Bug Tracker" = "https://github.com/bixb922/freezefs/issues"
 "Blog" = "https://solazyasueto.blogspot.com"
 
