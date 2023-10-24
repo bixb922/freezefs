@@ -7,6 +7,8 @@ freezefs saves a file structure with subfolders and builds an self-extractable o
 There are several ways to use freezefs:
 * Freeze the archive as frozen bytecode in a MicroPython image. Import the archive and it gets mounted as a read-only file system. The files continue to reside in the frozen image. 
 * Freeze the compressed archive as frozen bytecode in a MicroPython image. Import the archive once to extract the file structure to the flash file system. The purpose is to aid initial deployment of read/write files.
+
+These two options require RAM to import the archive:
 * Run a compressed .py archive with ```mpremote run```. The files get extracted to the microprocessor. This is a easy way to install many files at once, and it is quite fast.
 * Install a compressed .py archive with ```mpremote mip install``` and then import the file to extract all files. This aids in installing complete systems over-the-air (OTA). The file should be compiled with mpy-cross, to get all the gain from compression.
 
