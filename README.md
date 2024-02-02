@@ -53,7 +53,7 @@ myfolder
 ```
 The following command will archive the complete structure to the myfolder.py file:
 ```
-python -m freezefs  myfolder frozen_myfolder.py --target=/myfolder --on-import=mount
+python -m freezefs  myfolder frozen_myfolder.py 
 ```
 The frozen_myfolder.py will now contain all the files and folders, together with the code to mount this as a read only file system. To mount on the microcontroller, add this line to  boot.py or main.py:
 ```
@@ -65,7 +65,7 @@ When booting up the microcontroller, and once ```import frozen_myfolder``` has b
 ## Another example: create a self-extractable file archive
 Use:
 ```
-python -m freezefs  myfolder frozen_myfolder.py --target=/myfolder --on-import=extract --compress
+python -m freezefs  myfolder frozen_myfolder.py --on-import=extract --compress
 ```
 
 The frozen_myfolder.py will now contain all the files and folders compressed with zlib, together with the code to extract the files to the flash file system at ```/```. Optionally compile with ```mpy-cross frozen_myfolder.py``` to reduce file size. Have your code ```import frozen_myfolder```. This will decompress and extract (copy) the complete folder and subfolders to flash memory. On the next import, the files won't be overwritten (see ```--overwrite``` option).
@@ -101,7 +101,8 @@ options:
   --on-import {mount,extract}, -oi {mount,extract}
                         Action when importing output module. Default is mount.
   --target TARGET, -t TARGET
-                        For --on-import=mount: mount point. For --on-import=extract: destination folder.
+                        For --on-import=mount: mount point. For --on-import=extract: destination folder. 
+                        Default: the infolder.
                         Example: --target /myfiles. Must start with /
   --overwrite {never,always}, -ov {never,always}
                         always: on extract, all files are overwritten. never: on extract, no file is

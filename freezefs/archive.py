@@ -204,6 +204,7 @@ def main():
                         dest="target",
                         help="For --on-import=mount: mount point."
                              " For --on-import=extract: destination folder."
+                             " Default: the infolder."
                              " Example: --target /myfiles. Must start with /")
                              
     parser.add_argument("--overwrite", "-ov", type=str,
