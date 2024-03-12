@@ -242,7 +242,7 @@ Version number 2. If you are using version 1, please regenerate the output .py f
 Added --compress and --overwrite switches. Drivers for extracting and mounting are now included in the compressed file, no need to install drivers. freezefs is now pip installable.
 
 ## Compatibility with MicroPython/Python versions
-Tested with MicroPython 1.20 and Python 3.10.7 and 3.11.4.
+Tested with MicroPython 1.20 to 1.22 and Python 3.10.7 and 3.11.4.
 
 ## Copyright and license
 Source code and documentation Copyright (c) 2023 Hermann Paul von Borries.
