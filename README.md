@@ -222,7 +222,6 @@ Compressed .py files will use up to 2\*\*WBITS bytes of RAM while decompressing.
 
 When extracting a .py archive residing in the flash file system (or on SD card), the .py file is best compiled with mpy-cross to a .mpy to have the best gain in size. The complete .py (or .mpy) file will be loaded to RAM. To get that memory back once the extract is done, use ```__import__("module-name")```, without assigning the result of ```__import__``` to a variable. The extract driver will delete the itself from the ```sys.modules[]``` list, so the next garbage collection will free the memory.
 
-
 ## Unit tests
 
 The /tests folder on github has unit tests.
@@ -235,6 +234,12 @@ These standard MicroPython libraries are needed: sys, os, io.BytesIO, io.StringI
 Python 3.10 or later must be installed on the PC. Probably earlier versions of Python will work too. pahtlib is used to be platform independent.
 
 The code is MicroPython/Python only, no C/C++ code. There are no processor or board specific dependencies.
+
+# Restrictions
+
+While a freezefs filesystem is mounted, ```os.sync()``` may crash the microcontroller, raise a TypeError, or it may even appear to work. ```os.sync()``` cannot be used with freezefs.
+
+If you are using ```os.sync()``` and want to use freezefs, you may consider dropping ```os.sync()``` altogether. See MicroPython issue #11449 (https://github.com/micropython/micropython/issues/11449). On most architectures and filesystems (including ESP32, RP2040 and LittleFS2), ```os.sync()``` is a no-op (at lest for MicroPython up to version 1.23). Verify that for you case ```os.sync()``` really does something.
 
 #  Changes since version 1 
 Version number 2. If you are using version 1, please regenerate the output .py files with the new version of freezefs as they are incompatible.
