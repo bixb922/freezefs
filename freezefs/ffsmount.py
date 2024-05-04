@@ -46,7 +46,7 @@ class VfsFrozen:
                 del parts[i-1]
             else:
                 # Can't access /..
-                raise OSError( errno.EPERM )
+                self._raise_perm()
         # Solve ./file or /folder/./file
         while "." in parts:
             i = parts.index(".")
@@ -65,7 +65,10 @@ class VfsFrozen:
             return self.filedict[filename]
         else:
             raise OSError( errno.ENOENT )
-
+    
+    def _raise_perm( self ):
+        raise OSError(errno.EPERM) # Very common here
+        
     def open( self, filename, mode, buffering=None ):
         # Validate mode before opening file
         for c in mode:
@@ -77,7 +80,7 @@ class VfsFrozen:
         if dir_entry is None: 
             # This is a folder or the root of this file system
             if filename == "/":
-                raise OSError( errno.EPERM )
+                self._raise_perm()
             raise OSError(errno.EISDIR)
             
         data = dir_entry[0] # data 
@@ -150,20 +153,23 @@ class VfsFrozen:
         self.path = "/"
         
     def remove( self, filename ):
-        raise OSError( errno.EPERM )
+        self._raise_perm()
     
     def mkdir( self, *args ):
-        raise OSError( errno.EPERM )
+        self._raise_perm()
 
     def rename( self, oldfname, newfname ):
-        raise OSError( errno.EPERM )
+        self._raise_perm()
         
     def umount( self ):
         # No specific cleanup necessary on umount.
         pass
-
+    
+    # Added rmdir for completeness
+    def rmdir(self):
+        self._raise_perm()
+        
 def mount_fs( frozen_module_name, target, silent ):
-    module = __import__( frozen_module_name )
     
     if target is None:
         raise ValueError("No target specified")
@@ -181,5 +187,5 @@ def mount_fs( frozen_module_name, target, silent ):
     if not silent:
         print( f"mounting {__name__} at {target}." )
         
-    os.mount( VfsFrozen( module.direntries, module.sum_size, module.files_folders ), target, readonly=True )
+    os.mount( VfsFrozen( direntries, sum_size, files_folders ), target, readonly=True )
     return True

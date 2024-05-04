@@ -97,6 +97,6 @@ def extract_fs( module_name, target, overwrite, silent ):
     vp = _VerbosePrint( module_name, "extract", silent )
 
     vp.print( f"extracting files to {target}." )
-    _extract_all( module.direntries, target, overwrite, vp )
+    _extract_all( direntries, target, overwrite, vp )
             
     return 
