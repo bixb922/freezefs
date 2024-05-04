@@ -222,7 +222,6 @@ Compressed .py files will use up to 2\*\*WBITS bytes of RAM while decompressing.
 
 When extracting a .py archive residing in the flash file system (or on SD card), the .py file is best compiled with mpy-cross to a .mpy to have the best gain in size. The complete .py (or .mpy) file will be loaded to RAM. To get that memory back once the extract is done, use ```__import__("module-name")```, without assigning the result of ```__import__``` to a variable. The extract driver will delete the itself from the ```sys.modules[]``` list, so the next garbage collection will free the memory.
 
-
 ## Unit tests
 
 The /tests folder on github has unit tests.
@@ -236,13 +235,19 @@ Python 3.10 or later must be installed on the PC. Probably earlier versions of P
 
 The code is MicroPython/Python only, no C/C++ code. There are no processor or board specific dependencies.
 
+# Restrictions
+
+While a freezefs filesystem is mounted, ```os.sync()``` may crash the microcontroller, raise a TypeError, or it may even appear to work. ```os.sync()``` cannot be used with freezefs.
+
+If you are using ```os.sync()``` and want to use freezefs, you may consider dropping ```os.sync()``` altogether. See MicroPython issue #11449 (https://github.com/micropython/micropython/issues/11449). On most architectures and filesystems (including ESP32, RP2040 and LittleFS2), ```os.sync()``` is a no-op (at lest for MicroPython up to version 1.23). Verify that for you case ```os.sync()``` really does something.
+
 #  Changes since version 1 
 Version number 2. If you are using version 1, please regenerate the output .py files with the new version of freezefs as they are incompatible.
 
 Added --compress and --overwrite switches. Drivers for extracting and mounting are now included in the compressed file, no need to install drivers. freezefs is now pip installable.
 
 ## Compatibility with MicroPython/Python versions
-Tested with MicroPython 1.20 and Python 3.10.7 and 3.11.4.
+Tested with MicroPython 1.20 to 1.22 and Python 3.10.7 and 3.11.4.
 
 ## Copyright and license
 Source code and documentation Copyright (c) 2023 Hermann Paul von Borries.
