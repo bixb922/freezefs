@@ -87,8 +87,9 @@ def to_python(  pc_infolder, pc_outfile,
         
     # Get files
     files = []
-    for path in glob( "**", root_dir=pc_infolder, recursive=True ):
-        fo = FileObject( pc_infolder, Path( path ), request_compression, level, wbits )
+    for path in glob(os.path.join(pc_infolder, "**"), recursive=True):
+        rel_path = os.path.relpath(path, pc_infolder)
+        fo = FileObject(pc_infolder, Path(rel_path), request_compression, level, wbits)
         files.append( fo )
 
     # Generate output        
